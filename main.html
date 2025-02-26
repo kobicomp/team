@@ -1,0 +1,2857 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת ניהול משימות ופרויקטים</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.0/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.6.0/dist/chart.min.js"></script>
+    <!-- הוספת ספריית Sortable לתצוגת קנבס -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --primary-dark: #1976D2;
+            --primary-light: #E3F2FD;
+            --secondary-color: #FF9800;
+            --success-color: #4CAF50;
+            --danger-color: #F44336;
+            --warning-color: #FFC107;
+            --info-color: #00BCD4;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --gray-color: #6c757d;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+        
+        nav li {
+            margin-right: 1rem;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        nav a:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        
+        .active {
+            background-color: rgba(255,255,255,0.2);
+        }
+        
+        /* דשבורד */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--dark-color);
+        }
+        
+        .card-icon {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+        
+        .stat {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 1rem 0;
+        }
+        
+        /* דשבורד אישי */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .date-display {
+            font-size: 1.2rem;
+            color: var(--gray-color);
+        }
+        
+        .dashboard-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .summary-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        
+        .summary-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .summary-card.alert {
+            border-left: 4px solid var(--danger-color);
+        }
+        
+        .card-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+            color: var(--primary-color);
+        }
+        
+        .summary-card.alert .card-value {
+            color: var(--danger-color);
+        }
+        
+        .dashboard-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .section {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+        }
+        
+        .section h3 {
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .count {
+            background-color: var(--primary-light);
+            color: var(--primary-dark);
+            padding: 0.25rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .task-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .task-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .task-item:last-child {
+            border-bottom: none;
+        }
+        
+        .task-date {
+            background-color: var(--light-color);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--gray-color);
+        }
+        
+        .task-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        
+        .progress-mini {
+            width: 50px;
+            height: 8px;
+            background-color: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-mini .progress-bar {
+            height: 100%;
+            background-color: var(--success-color);
+        }
+        
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .chart-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+        }
+        
+        .chart-container h3 {
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .calendar-preview {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .calendar-preview h3 {
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        #mini-calendar {
+            height: 400px;
+        }
+        
+        .fc .fc-toolbar-title {
+            font-size: 1.2rem;
+        }
+        
+        .empty-state {
+            padding: 1rem;
+            text-align: center;
+            color: var(--gray-color);
+            font-style: italic;
+        }
+        
+        /* התראות */
+        .notifications-container {
+            position: fixed;
+            top: 4rem;
+            left: 1rem;
+            width: 300px;
+            z-index: 1000;
+        }
+        
+        .notification {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 0.5rem;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: slideIn 0.3s forwards;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .notification-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .notification.danger .notification-icon {
+            background-color: #FFEBEE;
+            color: var(--danger-color);
+        }
+        
+        .notification.warning .notification-icon {
+            background-color: #FFF8E1;
+            color: var(--warning-color);
+        }
+        
+        .notification.success .notification-icon {
+            background-color: #E8F5E9;
+            color: var(--success-color);
+        }
+        
+        .notification-close {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            background: none;
+            border: none;
+            color: var(--gray-color);
+            cursor: pointer;
+        }
+        
+        /* טאבים */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 1rem;
+        }
+        
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--gray-color);
+            transition: all 0.3s;
+        }
+        
+        .tab-button:hover {
+            color: var(--primary-color);
+        }
+        
+        .tab-button.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* שורת פעולות */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .search-box {
+            display: flex;
+            flex: 1;
+            max-width: 400px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+            font-size: 1rem;
+        }
+        
+        .search-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+        }
+        
+        .filter-box {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .filter-select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #388E3C;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #D32F2F;
+        }
+        
+        .btn-icon {
+            margin-right: 0.5rem;
+        }
+        
+        /* טבלאות */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        th, td {
+            padding: 1rem;
+            text-align: right;
+        }
+        
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        
+        /* סגנונות עדיפות וסטטוס */
+        .priority {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .priority-high {
+            background-color: #FFEBEE;
+            color: #D32F2F;
+        }
+        
+        .priority-medium {
+            background-color: #FFF8E1;
+            color: #FFA000;
+        }
+        
+        .priority-low {
+            background-color: #E8F5E9;
+            color: #388E3C;
+        }
+        
+        .status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .status-new {
+            background-color: #E3F2FD;
+            color: #1976D2;
+        }
+        
+        .status-in-progress {
+            background-color: #FFF8E1;
+            color: #FFA000;
+        }
+        
+        .status-completed {
+            background-color: #E8F5E9;
+            color: #388E3C;
+        }
+        
+        .status-delayed {
+            background-color: #FFEBEE;
+            color: #D32F2F;
+        }
+        
+        /* מודאלים */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 600px;
+            padding: 2rem;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            font-size: 1.5rem;
+            color: var(--gray-color);
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+        
+        .modal-header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--dark-color);
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.25);
+        }
+        
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .modal-footer {
+            margin-top: 1.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+        
+        /* פרוגרס בר */
+        .progress-container {
+            background-color: #f1f1f1;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+            height: 0.5rem;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background-color: var(--success-color);
+            border-radius: 4px;
+            transition: width 0.4s;
+        }
+        
+        /* כפתורי פעולה בטבלה */
+        .action-buttons {
+            display: flex;
+            gap: 0.25rem;
+        }
+        
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .action-btn:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+        
+        .edit-btn {
+            color: var(--info-color);
+        }
+        
+        .delete-btn {
+            color: var(--danger-color);
+        }
+        
+        .view-btn {
+            color: var(--primary-color);
+        }
+        
+        /* אנימציית טעינה */
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* מסך התחברות */
+        .login-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 2rem;
+            max-width: 400px;
+            margin: 2rem auto;
+            text-align: center;
+        }
+        
+        .login-container h2 {
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+        }
+        
+        .login-logo {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        /* פאנל משתמש */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: white;
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        /* תתי-משימות בתוך המשימה */
+        .subtasks-section {
+            margin-top: 2rem;
+            border-top: 1px solid #eee;
+            padding-top: 1rem;
+        }
+        
+        .subtasks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .subtasks-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+        
+        .subtasks-list {
+            margin-bottom: 1rem;
+        }
+        
+        .subtask-item {
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--light-color);
+        }
+        
+        .subtask-info {
+            flex: 1;
+        }
+        
+        .subtask-name {
+            font-weight: 500;
+        }
+        
+        .subtask-meta {
+            display: flex;
+            font-size: 0.85rem;
+            color: var(--gray-color);
+            margin-top: 0.25rem;
+            gap: 1rem;
+        }
+        
+        .subtask-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* תיבת התראה לשדות חובה */
+        .error-message {
+            color: var(--danger-color);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+        
+        /* תצוגה רספונסיבית */
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                max-width: 100%;
+            }
+            
+            .table-responsive {
+                overflow-x: auto;
+            }
+            
+            th, td {
+                padding: 0.75rem 0.5rem;
+            }
+            
+            .dashboard-sections, .charts-section {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .hidden {
+            display: none;
+        }
+
+        /* תפריט הקשר */
+        .context-menu {
+            position: fixed;
+            z-index: 1000;
+            width: 200px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            display: none;
+            direction: rtl;
+        }
+
+        .context-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .context-menu li {
+            padding: 8px 12px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .context-menu li:hover {
+            background-color: #f5f5f5;
+        }
+
+        .context-menu li.danger {
+            color: var(--danger-color);
+        }
+
+        .context-menu .submenu {
+            position: absolute;
+            right: 100%;
+            top: 0;
+            width: 180px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .context-menu .has-submenu:hover .submenu {
+            display: block;
+        }
+
+        .context-menu i {
+            margin-left: 8px;
+            width: 16px;
+            text-align: center;
+        }
+
+        /* תצוגת קנבן */
+        .view-toggle {
+            display: flex;
+            margin-bottom: 1rem;
+            background-color: #f1f1f1;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .view-toggle button {
+            flex: 1;
+            padding: 0.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--gray-color);
+        }
+
+        .view-toggle button.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .kanban-view {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .kanban-view.active {
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+        }
+
+        .kanban-column {
+            min-width: 280px;
+            width: 280px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .kanban-column-header {
+            font-weight: bold;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 2px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .kanban-column-header .count {
+            background-color: white;
+            color: var(--dark-color);
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .kanban-column[data-status="לביצוע"] .kanban-column-header {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .kanban-column[data-status="בתהליך"] .kanban-column-header {
+            border-color: var(--warning-color);
+            color: var(--warning-color);
+        }
+
+        .kanban-column[data-status="הושלם"] .kanban-column-header {
+            border-color: var(--success-color);
+            color: var(--success-color);
+        }
+
+        .kanban-column[data-status="מעוכב"] .kanban-column-header {
+            border-color: var(--danger-color);
+            color: var(--danger-color);
+        }
+
+        .kanban-card {
+            background-color: white;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: grab;
+        }
+
+        .kanban-card:active {
+            cursor: grabbing;
+        }
+
+        .kanban-card-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--gray-color);
+        }
+
+        .kanban-card-title {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .kanban-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+        }
+      .kanban-card-footer .priority {
+            padding: 0.15rem 0.3rem;
+            font-size: 0.7rem;
+        }
+
+        .kanban-card-footer .avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.7rem;
+        }
+
+        /* מדריך קיצורי מקלדת */
+        .keyboard-shortcuts-modal {
+            max-width: 500px;
+        }
+
+        .shortcuts-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .shortcuts-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .shortcuts-list kbd {
+            background-color: #f5f5f5;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.2);
+            margin: 0 0.2rem;
+        }
+
+        /* דף עזרה ומידע */
+        .help-section {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .help-section h3 {
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .help-items {
+            list-style: none;
+            padding: 0;
+        }
+
+        .help-items li {
+            padding: 0.5rem 0;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .help-items li:last-child {
+            border-bottom: none;
+        }
+
+        .help-items .help-question {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .help-items .help-answer {
+            color: var(--gray-color);
+        }
+
+        /* מצב לילה */
+        .dark-mode {
+            background-color: #222;
+            color: #eee;
+        }
+
+        .dark-mode .card,
+        .dark-mode .summary-card,
+        .dark-mode .section,
+        .dark-mode .chart-container,
+        .dark-mode .calendar-preview,
+        .dark-mode table,
+        .dark-mode .modal-content,
+        .dark-mode .kanban-card {
+            background-color: #333;
+            color: #eee;
+        }
+
+        .dark-mode th {
+            background-color: #444;
+        }
+
+        .dark-mode tr:nth-child(even) {
+            background-color: #3a3a3a;
+        }
+
+        .dark-mode tr:hover {
+            background-color: #444;
+        }
+
+        .dark-mode .form-control {
+            background-color: #444;
+            border-color: #555;
+            color: #eee;
+        }
+
+        .dark-mode .form-control:focus {
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.5);
+        }
+
+        /* כפתור מצב לילה */
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-left: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- מסך התחברות -->
+    <div id="login-screen" class="login-container">
+        <div class="login-logo">
+            <i class="fas fa-tasks"></i>
+        </div>
+        <h2>מערכת ניהול משימות</h2>
+        <div id="team-loading" class="loading">טוען רשימת משתמשים...</div>
+        <div id="team-select-container" class="form-group" style="display: none;">
+            <label class="form-label" for="user-select">בחר משתמש</label>
+            <select id="user-select" class="form-control">
+                <option value="">-- בחר משתמש --</option>
+                <!-- יתמלא דינמית -->
+            </select>
+            <button id="login-btn" class="btn btn-primary" style="margin-top: 1rem; width: 100%;">
+                כניסה למערכת
+            </button>
+        </div>
+    </div>
+
+    <!-- מבנה ראשי - יוצג רק לאחר התחברות -->
+    <div id="main-app" style="display: none;">
+        <header>
+            <div class="header-content">
+                <div class="logo">מערכת ניהול משימות</div>
+                <nav>
+                    <ul>
+                        <li><a href="#" class="active" data-tab="dashboard">דשבורד</a></li>
+                        <li><a href="#" data-tab="tasks">משימות</a></li>
+                        <li><a href="#" data-tab="subtasks">תתי-משימות</a></li>
+                        <li><a href="#" data-tab="team">צוות</a></li>
+                        <li><a href="#" data-tab="categories">קטגוריות</a></li>
+                        <li><a href="#" data-tab="logs">היסטוריה</a></li>
+                        <li><a href="#" data-tab="help">עזרה</a></li>
+                    </ul>
+                </nav>
+                <div class="user-info">
+                    <button id="theme-toggle" class="theme-toggle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <div class="user-avatar" id="user-avatar"></div>
+                    <span id="user-name"></span>
+                    <button id="logout-btn" class="btn-icon action-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <div class="container">
+            <!-- אזור התראות -->
+            <div id="notifications-container" class="notifications-container"></div>
+            
+            <!-- טאבים -->
+            <div class="tab-container">
+                <div class="tabs">
+                    <button class="tab-button active" data-tab="dashboard">דשבורד</button>
+                    <button class="tab-button" data-tab="tasks">משימות ראשיות</button>
+                    <button class="tab-button" data-tab="subtasks">תתי-משימות</button>
+                    <button class="tab-button" data-tab="team">צוות</button>
+                    <button class="tab-button" data-tab="categories">קטגוריות</button>
+                    <button class="tab-button" data-tab="logs">היסטוריה</button>
+                    <button class="tab-button" data-tab="help">עזרה</button>
+                </div>
+                
+                <!-- דשבורד -->
+                <div class="tab-content active" id="dashboard-tab">
+                    <div id="dashboard-container">
+                        <!-- יתמלא דינמית -->
+                    </div>
+                </div>
+                
+                <!-- משימות ראשיות -->
+                <div class="tab-content" id="tasks-tab">
+                    <div class="action-bar">
+                        <div class="search-box">
+                            <input type="text" class="search-input" id="task-search" placeholder="חיפוש משימות...">
+                            <button class="search-button"><i class="fas fa-search"></i></button>
+                        </div>
+                        
+                        <div class="filter-box">
+                            <select class="filter-select" id="task-status-filter">
+                                <option value="">כל הסטטוסים</option>
+                                <option value="לביצוע">לביצוע</option>
+                                <option value="בתהליך">בתהליך</option>
+                                <option value="הושלם">הושלם</option>
+                                <option value="מעוכב">מעוכב</option>
+                            </select>
+                            
+                            <select class="filter-select" id="task-priority-filter">
+                                <option value="">כל העדיפויות</option>
+                                <option value="גבוהה">גבוהה</option>
+                                <option value="בינונית">בינונית</option>
+                                <option value="נמוכה">נמוכה</option>
+                            </select>
+                            
+                            <select class="filter-select" id="task-category-filter">
+                                <option value="">כל הקטגוריות</option>
+                                <!-- יתמלא דינמית -->
+                            </select>
+                            
+                            <div class="filter-checkbox">
+                                <input type="checkbox" id="view-all-tasks">
+                                <label for="view-all-tasks">הצג את כל המשימות</label>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="add-task-btn">
+                            <i class="fas fa-plus btn-icon"></i>משימה חדשה
+                        </button>
+                    </div>
+                    
+                    <!-- תצוגת טבלה / קנבן -->
+                    <div class="view-toggle">
+                        <button class="active" id="table-view-btn"><i class="fas fa-table"></i> תצוגת טבלה</button>
+                        <button id="kanban-view-btn"><i class="fas fa-columns"></i> תצוגת קנבן</button>
+                    </div>
+                    
+                    <!-- תצוגת טבלה -->
+                    <div class="table-responsive" id="table-view">
+                        <table id="tasks-table">
+                            <thead>
+                                <tr>
+                                    <th>מזהה</th>
+                                    <th>שם המשימה</th>
+                                    <th>אחראי</th>
+                                    <th>עדיפות</th>
+                                    <th>סטטוס</th>
+                                    <th>תאריך יעד</th>
+                                    <th>התקדמות</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tasks-table-body">
+                                <!-- יתמלא דינמית -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- תצוגת קנבן -->
+                    <div class="kanban-view" id="kanban-view">
+                        <div class="kanban-column" data-status="לביצוע">
+                            <div class="kanban-column-header">
+                                <span>לביצוע</span>
+                                <span class="count">0</span>
+                            </div>
+                            <div class="kanban-items" id="kanban-new">
+                                <!-- יתמלא דינמית -->
+                            </div>
+                        </div>
+                        
+                        <div class="kanban-column" data-status="בתהליך">
+                            <div class="kanban-column-header">
+                                <span>בתהליך</span>
+                                <span class="count">0</span>
+                            </div>
+                            <div class="kanban-items" id="kanban-in-progress">
+                                <!-- יתמלא דינמית -->
+                            </div>
+                        </div>
+                        
+                        <div class="kanban-column" data-status="הושלם">
+                            <div class="kanban-column-header">
+                                <span>הושלם</span>
+                                <span class="count">0</span>
+                            </div>
+                            <div class="kanban-items" id="kanban-completed">
+                                <!-- יתמלא דינמית -->
+                            </div>
+                        </div>
+                        
+                        <div class="kanban-column" data-status="מעוכב">
+                            <div class="kanban-column-header">
+                                <span>מעוכב</span>
+                                <span class="count">0</span>
+                            </div>
+                            <div class="kanban-items" id="kanban-delayed">
+                                <!-- יתמלא דינמית -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- תתי-משימות -->
+                <div class="tab-content" id="subtasks-tab">
+                    <div class="action-bar">
+                        <div class="search-box">
+                            <input type="text" class="search-input" id="subtask-search" placeholder="חיפוש תתי-משימות...">
+                            <button class="search-button"><i class="fas fa-search"></i></button>
+                        </div>
+                        
+                        <div class="filter-box">
+                            <select class="filter-select" id="subtask-status-filter">
+                                <option value="">כל הסטטוסים</option>
+                                <option value="לביצוע">לביצוע</option>
+                                <option value="בתהליך">בתהליך</option>
+                                <option value="הושלם">הושלם</option>
+                                <option value="מעוכב">מעוכב</option>
+                            </select>
+                            
+                            <select class="filter-select" id="subtask-parent-filter">
+                                <option value="">כל המשימות הראשיות</option>
+                                <!-- יתמלא דינמית -->
+                            </select>
+                            
+                            <div class="filter-checkbox">
+                                <input type="checkbox" id="view-all-subtasks">
+                                <label for="view-all-subtasks">הצג את כל תתי-המשימות</label>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="add-subtask-btn">
+                            <i class="fas fa-plus btn-icon"></i>תת-משימה חדשה
+                        </button>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table id="subtasks-table">
+                            <thead>
+                                <tr>
+                                    <th>מזהה</th>
+                                    <th>משימה ראשית</th>
+                                    <th>שם תת-משימה</th>
+                                    <th>אחראי</th>
+                                    <th>סטטוס</th>
+                                    <th>תאריך יעד</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody id="subtasks-table-body">
+                                <!-- יתמלא דינמית -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- צוות -->
+                <div class="tab-content" id="team-tab">
+                    <div class="action-bar">
+                        <div class="search-box">
+                            <input type="text" class="search-input" id="team-search" placeholder="חיפוש חברי צוות...">
+                            <button class="search-button"><i class="fas fa-search"></i></button>
+                        </div>
+                        
+                        <div class="filter-box">
+                            <select class="filter-select" id="team-department-filter">
+                                <option value="">כל המחלקות</option>
+                                <!-- יתמלא דינמית -->
+                            </select>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="add-team-member-btn">
+                            <i class="fas fa-user-plus btn-icon"></i>הוסף חבר צוות
+                        </button>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table id="team-table">
+                            <thead>
+                                <tr>
+                                    <th>שם מלא</th>
+                                    <th>תפקיד</th>
+                                    <th>אימייל</th>
+                                    <th>טלפון</th>
+                                    <th>צוות/מחלקה</th>
+                                    <th>משימות פעילות</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody id="team-table-body">
+                                <!-- יתמלא דינמית -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- קטגוריות -->
+                <div class="tab-content" id="categories-tab">
+                    <div class="action-bar">
+                        <div class="search-box">
+                            <input type="text" class="search-input" id="category-search" placeholder="חיפוש קטגוריות...">
+                            <button class="search-button"><i class="fas fa-search"></i></button>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="add-category-btn">
+                            <i class="fas fa-folder-plus btn-icon"></i>הוסף קטגוריה
+                        </button>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table id="categories-table">
+                            <thead>
+                                <tr>
+                                    <th>שם הקטגוריה</th>
+                                    <th>תיאור</th>
+                                    <th>צבע</th>
+                                    <th>מנהל אחראי</th>
+                                    <th>משימות</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody id="categories-table-body">
+                                <!-- יתמלא דינמית -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- היסטוריה -->
+                <div class="tab-content" id="logs-tab">
+                    <div class="action-bar">
+                        <div class="search-box">
+                            <input type="text" class="search-input" id="log-search" placeholder="חיפוש באירועים...">
+                            <button class="search-button"><i class="fas fa-search"></i></button>
+                        </div>
+                        
+                        <div class="filter-box">
+                            <select class="filter-select" id="log-action-filter">
+                                <option value="">כל סוגי הפעולות</option>
+                                <option value="יצירה">יצירה</option>
+                                <option value="עדכון">עדכון</option>
+                                <option value="מחיקה">מחיקה</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table id="logs-table">
+                            <thead>
+                                <tr>
+                                    <th>זמן</th>
+                                    <th>סוג פעולה</th>
+                                    <th>מזהה משימה</th>
+                                    <th>בוצע ע"י</th>
+                                    <th>תיאור</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logs-table-body">
+                                <!-- יתמלא דינמית -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- עזרה ומידע -->
+                <div class="tab-content" id="help-tab">
+                    <div class="help-section">
+                        <h3><i class="fas fa-keyboard"></i> קיצורי מקלדת</h3>
+                        <ul class="help-items shortcuts-list">
+                            <li>
+                                <div>פתיחת משימה חדשה</div>
+                                <div><kbd>Alt</kbd> + <kbd>N</kbd></div>
+                            </li>
+                            <li>
+                                <div>פתיחת תת-משימה חדשה</div>
+                                <div><kbd>Alt</kbd> + <kbd>S</kbd></div>
+                            </li>
+                            <li>
+                                <div>חיפוש</div>
+                                <div><kbd>Alt</kbd> + <kbd>F</kbd></div>
+                            </li>
+                            <li>
+                                <div>מעבר לדשבורד</div>
+                                <div><kbd>Alt</kbd> + <kbd>D</kbd></div>
+                            </li>
+                            <li>
+                                <div>מעבר לטאב משימות</div>
+                                <div><kbd>Alt</kbd> + <kbd>T</kbd></div>
+                            </li>
+                            <li>
+                                <div>מעבר בין טאבים</div>
+                                <div><kbd>Alt</kbd> + <kbd>1</kbd> עד <kbd>7</kbd></div>
+                            </li>
+                            <li>
+                                <div>סגירת חלונות</div>
+                                <div><kbd>Esc</kbd></div>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="help-section">
+                        <h3><i class="fas fa-question-circle"></i> שאלות נפוצות</h3>
+                        <ul class="help-items">
+                            <li>
+                                <div class="help-question">איך אוכל ליצור תבנית למשימות חוזרות?</div>
+                                <div class="help-answer">צור משימה חדשה, הגדר את כל הפרטים הרצויים, ולאחר מכן לחץ על "שמור כתבנית" בתחתית החלון. תבניות שמורות יופיעו בתפריט הנפתח בעת יצירת משימה חדשה.</div>
+                            </li>
+                            <li>
+                                <div class="help-question">איך אוכל לעקוב אחר זמן העבודה על משימה?</div>
+                                <div class="help-answer">לכל משימה ניתן להפעיל טיימר באמצעות לחיצה על כפתור "התחל מעקב זמן" בעמוד פרטי המשימה. לאחר סיום העבודה, לחץ על "עצור" והזמן יישמר אוטומטית.</div>
+                            </li>
+                            <li>
+                                <div class="help-question">איך אוכל לראות את כל המשימות בתצוגת לוח זמנים?</div>
+                                <div class="help-answer">בטאב "דשבורד" ניתן לראות תצוגת לוח שנה עם כל המשימות. ניתן גם לעבור לתצוגת גאנט בלחיצה על הכפתור "תצוגת גאנט" בפינה העליונה של הלוח.</div>
+                            </li>
+                            <li>
+                                <div class="help-question">איך ניתן להגדיר התראות והתרעות?</div>
+                                <div class="help-answer">בכל משימה ניתן להגדיר התראות מותאמות אישית. לחץ על "הגדרות התראה" בעמוד פרטי המשימה וקבע את הזמן והאופן בו תרצה לקבל התראות.</div>
+                            </li>
+                            <li>
+                                <div class="help-question">האם ניתן לייצא נתונים מהמערכת?</div>
+                                <div class="help-answer">כן, ניתן לייצא נתונים בפורמט Excel, CSV או PDF. לחץ על כפתור "ייצוא" בפינה השמאלית העליונה של כל טבלת נתונים, ובחר את הפורמט הרצוי.</div>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="help-section">
+                        <h3><i class="fas fa-info-circle"></i> אודות המערכת</h3>
+                        <p>מערכת ניהול המשימות פותחה כדי לסייע לארגונים לנהל את המשימות והפרויקטים שלהם ביעילות. המערכת מאפשרת מעקב אחר משימות, הקצאת משאבים, ניהול זמנים ומעקב אחר התקדמות.</p>
+                        <p>גרסת מערכת: 2.5.0</p>
+                        <p>תאריך עדכון אחרון: 26.2.2025</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- מודאל משימה -->
+    <div class="modal" id="task-modal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header">
+                <h3 class="modal-title" id="task-modal-title">הוספת משימה חדשה</h3>
+            </div>
+            <form id="task-form">
+                <div class="form-group">
+                    <label class="form-label" for="task-id">מזהה משימה</label>
+                    <input type="text" class="form-control" id="task-id" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="task-name">שם המשימה</label>
+                    <input type="text" class="form-control" id="task-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="task-description">תיאור המשימה</label>
+                    <textarea class="form-control" id="task-description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="task-assignee">אחראי ביצוע</label>
+                    <select class="form-control" id="task-assignee" required>
+                        <!-- יתמלא דינמית -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="task-priority">עדיפות</label>
+                    <select class="form-control" id="task-priority" required>
+                        <option value="גבוהה">גבוהה</option>
+                        <option value="בינונית">בינונית</option>
+                        <option value="נמוכה">נמוכה</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="task-status">סטטוס</label>
+                    <select class="form-control" id="task-status" required>
+                        <option value="לביצוע">לביצוע</option>
+                        <option value="בתהליך">בתהליך</option>
+                        <option value="הושלם">הושלם</option>
+                        <option value="מעוכב">מעוכב</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="task-start-date">תאריך יצירה</label>
+                    <input type="date" class="form-control" id="task-start-date" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="task-due-date">תאריך יעד</label>
+                    <input type="date" class="form-control" id="task-due-date" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="task-completion-date">תאריך סיום בפועל</label>
+                    <input type="date" class="form-control" id="task-completion-date">
+                    <div class="error-message" id="completion-date-error">שדה זה הוא חובה כאשר הסטטוס הוא "הושלם"</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="task-progress">אחוז התקדמות</label>
+                    <input type="number" class="form-control" id="task-progress" min="0" max="100" value="0">
+                    <div class="progress-container">
+                        <div class="progress-bar" id="task-progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="task-category">קטגוריה/פרויקט</label>
+                    <select class="form-control" id="task-category" required>
+                        <!-- יתמלא דינמית -->
+                    </select>
+                </div>
+
+                <!-- תתי-משימות בתוך המשימה -->
+                <div class="subtasks-section" id="task-subtasks-section">
+                    <div class="subtasks-header">
+                        <h3 class="subtasks-title">תתי-משימות</h3>
+                        <button type="button" class="btn btn-primary" id="add-subtask-in-task-btn">
+                            <i class="fas fa-plus btn-icon"></i>הוסף תת-משימה
+                        </button>
+                    </div>
+                    <div class="subtasks-list" id="task-subtasks-list">
+                        <!-- יתמלא דינמית -->
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="cancel-task-btn">ביטול</button>
+                    <button type="button" class="btn btn-info" id="save-as-template-btn">
+                        <i class="fas fa-save btn-icon"></i>שמור כתבנית
+                    </button>
+                    <button type="submit" class="btn btn-success" id="save-task-btn">
+                        <span class="btn-text">שמור</span>
+                        <span class="loader hidden"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- מודאל תת-משימה -->
+    <div class="modal" id="subtask-modal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header">
+                <h3 class="modal-title" id="subtask-modal-title">הוספת תת-משימה חדשה</h3>
+            </div>
+            <form id="subtask-form">
+                <div class="form-group">
+                    <label class="form-label" for="subtask-id">מזהה תת-משימה</label>
+                    <input type="text" class="form-control" id="subtask-id" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="subtask-parent">משימה ראשית</label>
+                    <select class="form-control" id="subtask-parent" required>
+                        <!-- יתמלא דינמית -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="subtask-name">שם תת-המשימה</label>
+                    <input type="text" class="form-control" id="subtask-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="subtask-description">תיאור תת-המשימה</label>
+                    <textarea class="form-control" id="subtask-description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="subtask-assignee">אחראי ביצוע</label>
+                    <select class="form-control" id="subtask-assignee" required>
+                        <!-- יתמלא דינמית -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="subtask-status">סטטוס</label>
+                    <select class="form-control" id="subtask-status" required>
+                        <option value="לביצוע">לביצוע</option>
+                        <option value="בתהליך">בתהליך</option>
+                        <option value="הושלם">הושלם</option>
+                        <option value="מעוכב">מעוכב</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="subtask-start-date">תאריך יצירה</label>
+                    <input type="date" class="form-control" id="subtask-start-date" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="subtask-due-date">תאריך יעד</label>
+                    <input type="date" class="form-control" id="subtask-due-date" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="subtask-completion-date">תאריך סיום בפועל</label>
+                    <input type="date" class="form-control" id="subtask-completion-date">
+                    <div class="error-message" id="subtask-completion-date-error">שדה זה הוא חובה כאשר הסטטוס הוא "הושלם"</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="cancel-subtask-btn">ביטול</button>
+                    <button type="submit" class="btn btn-success" id="save-subtask-btn">
+                        <span class="btn-text">שמור</span>
+                        <span class="loader hidden"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- מודאל חבר צוות -->
+    <div class="modal" id="team-modal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header">
+                <h3 class="modal-title" id="team-modal-title">הוספת חבר צוות חדש</h3>
+            </div>
+            <form id="team-form">
+                <div class="form-group">
+                    <label class="form-label" for="team-name">שם מלא</label>
+                    <input type="text" class="form-control" id="team-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="team-role">תפקיד</label>
+                    <input type="text" class="form-control" id="team-role" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="team-email">אימייל</label>
+                    <input type="email" class="form-control" id="team-email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="team-phone">טלפון</label>
+                    <input type="tel" class="form-control" id="team-phone">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="team-department">צוות/מחלקה</label>
+                    <input type="text" class="form-control" id="team-department" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="cancel-team-btn">ביטול</button>
+                    <button type="submit" class="btn btn-success" id="save-team-btn">
+                        <span class="btn-text">שמור</span>
+                        <span class="loader hidden"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- מודאל קטגוריה -->
+    <div class="modal" id="category-modal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header">
+                <h3 class="modal-title" id="category-modal-title">הוספת קטגוריה חדשה</h3>
+            </div>
+            <form id="category-form">
+                <div class="form-group">
+                    <label class="form-label" for="category-name">שם הקטגוריה</label>
+                    <input type="text" class="form-control" id="category-name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="category-description">תיאור</label>
+                    <textarea class="form-control" id="category-description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="category-color">צבע</label>
+                    <input type="color" class="form-control" id="category-color" value="#4285F4">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="category-manager">מנהל אחראי</label>
+                    <select class="form-control" id="category-manager" required>
+                        <!-- יתמלא דינמית -->
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="cancel-category-btn">ביטול</button>
+                    <button type="submit" class="btn btn-success" id="save-category-btn">
+                        <span class="btn-text">שמור</span>
+                        <span class="loader hidden"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- מודאל לוג -->
+    <div class="modal" id="log-modal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header">
+                <h3 class="modal-title">רישום פעולה חדשה</h3>
+            </div>
+            <form id="log-form">
+                <div class="form-group">
+                    <label class="form-label" for="log-time">זמן פעולה</label>
+                    <input type="datetime-local" class="form-control" id="log-time" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="log-type">סוג פעולה</label>
+                    <select class="form-control" id="log-type" required>
+                        <option value="יצירה">יצירה</option>
+                        <option value="עדכון">עדכון</option>
+                        <option value="מחיקה">מחיקה</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="log-task-id">מזהה משימה</label>
+                    <input type="text" class="form-control" id="log-task-id" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="log-user">מבצע הפעולה</label>
+                    <select class="form-control" id="log-user" required>
+                        <!-- יתמלא דינמית -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="log-description">תיאור הפעולה</label>
+                    <textarea class="form-control" id="log-description" required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="cancel-log-btn">ביטול</button>
+                    <button type="submit" class="btn btn-success" id="save-log-btn">
+                        <span class="btn-text">שמור</span>
+                        <span class="loader hidden"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- מודאל קיצורי מקלדת -->
+    <div class="modal" id="keyboard-shortcuts-modal">
+        <div class="modal-content keyboard-shortcuts-modal">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header">
+                <h3 class="modal-title">קיצורי מקלדת</h3>
+            </div>
+            <ul class="shortcuts-list">
+                <li>
+                    <div>פתיחת משימה חדשה</div>
+                    <div><kbd>Alt</kbd> + <kbd>N</kbd></div>
+                </li>
+                <li>
+                    <div>פתיחת תת-משימה חדשה</div>
+                    <div><kbd>Alt</kbd> + <kbd>S</kbd></div>
+                </li>
+                <li>
+                    <div>חיפוש</div>
+                    <div><kbd>Alt</kbd> + <kbd>F</kbd></div>
+                </li>
+                <li>
+                    <div>מעבר לדשבורד</div>
+                    <div><kbd>Alt</kbd> + <kbd>D</kbd></div>
+                </li>
+                <li>
+                    <div>מעבר לטאב משימות</div>
+                    <div><kbd>Alt</kbd> + <kbd>T</kbd></div>
+                </li>
+                <li>
+                    <div>מעבר בין טאבים</div>
+                    <div><kbd>Alt</kbd> + <kbd>1</kbd> עד <kbd>7</kbd></div>
+                </li>
+                <li>
+                    <div>סגירת חלונות</div>
+                    <div><kbd>Esc</kbd></div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- תפריט הקשר למשימות -->
+    <div id="context-menu" class="context-menu">
+        <ul>
+            <li data-action="view"><i class="fas fa-eye"></i> צפייה</li>
+            <li data-action="edit"><i class="fas fa-edit"></i> עריכה</li>
+            <li data-action="status" class="has-submenu">
+                <i class="fas fa-tasks"></i> עדכון סטטוס
+                <ul class="submenu">
+                    <li data-action="status-new"><i class="fas fa-circle status-new"></i> לביצוע</li>
+                    <li data-action="status-in-progress"><i class="fas fa-circle status-in-progress"></i> בתהליך</li>
+                    <li data-action="status-completed"><i class="fas fa-circle status-completed"></i> הושלם</li>
+                    <li data-action="status-delayed"><i class="fas fa-circle status-delayed"></i> מעוכב</li>
+                </ul>
+            </li>
+            <li data-action="add-subtask"><i class="fas fa-plus"></i> הוסף תת-משימה</li>
+            <li data-action="delete" class="danger"><i class="fas fa-trash"></i> מחיקה</li>
+        </ul>
+    </div>
+    
+    <script>
+        // הגדרות המערכת
+        const CONFIG = {
+            // קישורים לגיליונות נתונים
+            SHEETS: {
+                tasks: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vScsHH7dbqbDm5UMWQ2mXDWyET3Z4K6aL4H0xJhgdieKMtSswABYwsmuwfu-ir_ZXUdHLsnkxyaS5_j/pub?output=csv',
+                subtasks: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTo-zRPC6oof_fhmsmpe7f57vZwn-9jCFBnsWr5LZOe3rKmXnN0zS8bs0udNynjZRdh61e3epkxRrCe/pub?output=csv',
+                team: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRWhGu69TpNTiE9DE1n5KsiH4iEpqhNy3s-UcwYBe_EIZwO5TvUVVHCs9_ZgAQ-2_J3eQE_ODXjBtPA/pub?output=csv',
+                categories: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSRkXeBv6QMMSyvvlyR9AC9OJZ4zIFa4FiksFudg7mcUknW3r5zzR_tHcOx8ZdtG0hEYsyg-cL9ci4t/pub?output=csv',
+                logs: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTTXm97I0cyNcdnMvXuBtd6WXVOilxs0whynYGhAJX1AoJBkgV4kiWsVv84HmV35lNvIfVc1kgOv1oe/pub?output=csv'
+            },
+            
+            // קישורים לטפסי גוגל
+            FORMS: {
+                tasks: 'https://docs.google.com/forms/d/e/1FAIpQLSchW6rJl8w1VP3B41EeHpDEPtt09TLLF1MeHJj4ZgFs93Zerg/formResponse',
+                subtasks: 'https://docs.google.com/forms/d/e/1FAIpQLSeLnoQ0KIEhP7Yk48t2CN5FsvihSzrOt0KztoOPUy3naJW46g/formResponse',
+                team: 'https://docs.google.com/forms/d/e/1FAIpQLSeFrNrurPveYdK9ApFlgkXu8nOt0HYzerUNH3zDuC7sWIEWBw/formResponse',
+                categories: 'https://docs.google.com/forms/d/e/1FAIpQLSfWY_A_fmH7FGrSAe7TMAA6LHSki2NGC9ghKIJxNVlxtxb3Rw/formResponse',
+                logs: 'https://docs.google.com/forms/d/e/1FAIpQLSe-C8JXrmv3C7po-rhf5pElpojMLr2juxEqLpBmjRat9E2fOw/formResponse'
+            },
+            
+            // מזהי שדות הטפסים
+            FIELDS: {
+                tasks: {
+                    "מזהה משימה": "entry.2054280134",
+                    "שם המשימה": "entry.637590758",
+                    "תיאור המשימה": "entry.1017991574",
+                    "אחראי ביצוע": "entry.1499148213",
+                    "עדיפות": "entry.529873824",
+                    "סטטוס": "entry.1453786945",
+                    "תאריך יצירה": "entry.2091948889",
+                    "תאריך יעד": "entry.407689682",
+                    "תאריך סיום בפועל": "entry.1328548372",
+                    "אחוז התקדמות": "entry.1696420532",
+                    "קטגוריה/פרוייקט": "entry.1652595015"
+                },
+                subtasks: {
+                    "מזהה תת משימה": "entry.1251635009",
+                    "משימה ראשית": "entry.1212702336",
+                    "שם תת משימה": "entry.87549220",
+                    "תיאור תת משימה": "entry.354632529",
+                    "אחראי ביצוע": "entry.1429238734",
+                    "סטטוס": "entry.765500006",
+                    "תאריך יצירה": "entry.1390493653",
+                    "תאריך יעד": "entry.635945244",
+                    "תאריך סיום בפועל": "entry.1663915626"
+                },
+                team: {
+                    "שם מלא": "entry.756360730",
+                    "תפקיד": "entry.723804406",
+                    "אי מייל": "entry.234705934",
+                    "טלפון": "entry.846485915",
+                    "צוות": "entry.2014875962"
+                },
+                categories: {
+                    "שם קטגוריה": "entry.249866111",
+                    "תיאר": "entry.587376028",
+                    "צבע": "entry.1256268019",
+                    "מנהל אחראי": "entry.254721129"
+                },
+                logs: {
+                    "זמן פעולה": "entry.909214407",
+                    "סוג פעולה": "entry.1458162805",
+                    "מזהה משימה": "entry.1550711605",
+                    "מבצע משימה": "entry.626598428",
+                    "תיאר פעולה": "entry.1127735204"
+                }
+            },
+            
+            // זמן רענון נתונים (במילישניות)
+            REFRESH_INTERVAL: 5 * 60 * 1000
+        };
+        
+        // משתנים גלובליים
+        let tasksData = [];
+        let subtasksData = [];
+        let teamData = [];
+        let categoriesData = [];
+        let logsData = [];
+        let currentUser = null;
+        let charts = {};
+        let currentTaskId = null; // משתנה גלובלי לשמירת המזהה של המשימה הנוכחית
+        let taskTemplates = {}; // מאגר תבניות משימות
+        let kanbanSortables = {}; // שמירת מופעי Sortable לתצוגת קנבן
+        
+        // =========================================
+        // פונקציות אתחול ומנגנון התחברות
+        // =========================================
+        
+        // אתחול בעת טעינת הדף
+        document.addEventListener('DOMContentLoaded', function() {
+            // בדיקה אם יש משתמש שמור
+            checkSavedUser();
+            
+            // טעינת נתוני הצוות לבחירת המשתמש
+            loadTeamForLogin();
+            
+            // אתחול אירועי כפתורים לכניסה והתנתקות
+            setupLoginEvents();
+            
+            // טעינת תבניות משימות מהאחסון המקומי
+            loadTaskTemplates();
+            
+            // אתחול כפתור מצב לילה
+            setupDarkMode();
+        });
+        
+        // טעינת תבניות משימות מהאחסון המקומי
+        function loadTaskTemplates() {
+            const savedTemplates = localStorage.getItem('taskTemplates');
+            if (savedTemplates) {
+                taskTemplates = JSON.parse(savedTemplates);
+            }
+        }
+        
+        // שמירת תבניות משימות באחסון המקומי
+        function saveTaskTemplates() {
+            localStorage.setItem('taskTemplates', JSON.stringify(taskTemplates));
+        }
+        
+        // אתחול מצב לילה
+        function setupDarkMode() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const isDarkMode = localStorage.getItem('darkMode') === 'true';
+            
+            // הפעלת מצב לילה בהתאם להגדרות השמורות
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+            }
+            
+            // אירוע לכפתור מצב לילה
+            themeToggle.addEventListener('click', function() {
+                document.body.classList.toggle('dark-mode');
+                const isDark = document.body.classList.contains('dark-mode');
+                localStorage.setItem('darkMode', isDark);
+                themeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            });
+        }
+        
+        // בדיקה אם המשתמש כבר מחובר
+        function checkSavedUser() {
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showMainApp();
+            }
+        }
+        
+        // טעינת נתוני צוות לבחירת משתמש
+        async function loadTeamForLogin() {
+            try {
+                const response = await fetch(CONFIG.SHEETS.team);
+                if (!response.ok) throw new Error('שגיאה בטעינת נתוני הצוות');
+                
+                const csvText = await response.text();
+                const teamData = parseCSV(csvText);
+                
+                if (teamData.length === 0) {
+                    document.getElementById('team-loading').textContent = 'לא נמצאו חברי צוות';
+                    return;
+                }
+                
+                // מיון לפי הגרסה העדכנית ביותר של כל משתמש
+                const latestTeamMembers = getLatestVersions(teamData, 'שם מלא');
+                
+                const selectElement = document.getElementById('user-select');
+                latestTeamMembers.forEach(member => {
+                    const option = document.createElement('option');
+                    option.value = member['שם מלא'];
+                    option.textContent = `${member['שם מלא']} (${member['תפקיד']})`;
+                    selectElement.appendChild(option);
+                });
+                
+                // הצגת תיבת הבחירה
+                document.getElementById('team-loading').style.display = 'none';
+                document.getElementById('team-select-container').style.display = 'block';
+                
+            } catch (error) {
+                console.error('שגיאה בטעינת נתוני הצוות:', error);
+                document.getElementById('team-loading').textContent = 'שגיאה בטעינת נתוני הצוות. נא לרענן את הדף.';
+            }
+        }
+        
+        // אתחול אירועי כניסה והתנתקות
+        function setupLoginEvents() {
+            // אירוע כניסה
+            document.getElementById('login-btn').addEventListener('click', function() {
+                const selectedUser = document.getElementById('user-select').value;
+                if (!selectedUser) {
+                    alert('יש לבחור משתמש');
+                    return;
+                    }
+                
+                // מציאת פרטי המשתמש
+                const userSelect = document.getElementById('user-select');
+                const userText = userSelect.options[userSelect.selectedIndex].text;
+                const rolePart = userText.match(/\((.*?)\)/);
+                const role = rolePart ? rolePart[1] : '';
+                
+                currentUser = {
+                    name: selectedUser,
+                    role: role,
+                    avatar: selectedUser.substring(0, 1)
+                };
+                
+                // שמירה ב-localStorage
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                // מעבר למסך הראשי
+                showMainApp();
+            });
+            
+            // אירוע התנתקות
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                localStorage.removeItem('currentUser');
+                location.reload();
+            });
+        }
+        
+        // הצגת המסך הראשי לאחר התחברות
+        function showMainApp() {
+            // הסתרת מסך התחברות
+            document.getElementById('login-screen').style.display = 'none';
+            
+            // הצגת האפליקציה
+            document.getElementById('main-app').style.display = 'block';
+            
+            // הצגת פרטי המשתמש
+            document.getElementById('user-name').textContent = currentUser.name;
+            document.getElementById('user-avatar').textContent = currentUser.avatar;
+            
+            // טעינת הנתונים
+            fetchAllData();
+            
+            // אתחול אירועים
+            setupTabs();
+            setupAddButtons();
+            setupSearchAndFilters();
+            setupModalCloseEvents();
+            setupForms();
+            setupTaskStatusValidation();
+            setupSubtaskStatusValidation();
+            setupKeyboardShortcuts();
+            setupViewToggle();
+            setupContextMenu();
+            
+            // הגדרת רענון תקופתי
+            setInterval(fetchAllData, CONFIG.REFRESH_INTERVAL);
+            
+            // אתחול מערכת ההתראות
+            setupNotifications();
+        }
+        
+        // =========================================
+        // פונקציות שיפור חווית משתמש - תוספות חדשות
+        // =========================================
+        
+        // אתחול קיצורי מקלדת
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', function(e) {
+                // בדיקה אם המשתמש לא נמצא בתוך שדה טקסט או טקסט-אריה
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    return;
+                }
+                
+                // Alt+N - הוספת משימה חדשה
+                if (e.altKey && e.key === 'n') {
+                    e.preventDefault();
+                    document.getElementById('add-task-btn').click();
+                }
+                
+                // Alt+S - הוספת תת-משימה חדשה
+                if (e.altKey && e.key === 's') {
+                    e.preventDefault();
+                    document.getElementById('add-subtask-btn').click();
+                }
+                
+                // Alt+F - התמקדות בשדה החיפוש
+                if (e.altKey && e.key === 'f') {
+                    e.preventDefault();
+                    // חיפוש בהתאם לטאב הפעיל
+                    const activeTab = document.querySelector('.tab-content.active');
+                    if (activeTab) {
+                        const searchInput = activeTab.querySelector('.search-input');
+                        if (searchInput) {
+                            searchInput.focus();
+                        }
+                    }
+                }
+                
+                // Alt+D - מעבר לטאב הדשבורד
+                if (e.altKey && e.key === 'd') {
+                    e.preventDefault();
+                    switchTab('dashboard');
+                }
+                
+                // Alt+T - מעבר לטאב המשימות
+                if (e.altKey && e.key === 't') {
+                    e.preventDefault();
+                    switchTab('tasks');
+                }
+                
+                // Alt+1-7 - מעבר בין הטאבים
+                if (e.altKey && e.key >= '1' && e.key <= '7') {
+                    e.preventDefault();
+                    const tabIndex = parseInt(e.key) - 1;
+                    const tabs = ['dashboard', 'tasks', 'subtasks', 'team', 'categories', 'logs', 'help'];
+                    if (tabIndex < tabs.length) {
+                        switchTab(tabs[tabIndex]);
+                    }
+                }
+                
+                // Alt+K - הצגת מדריך קיצורי מקלדת
+                if (e.altKey && e.key === 'k') {
+                    e.preventDefault();
+                    openModal('keyboard-shortcuts-modal');
+                }
+                
+                // Esc - סגירת מודאלים פתוחים
+                if (e.key === 'Escape') {
+                    const openModals = document.querySelectorAll('.modal[style*="display: flex"]');
+                    openModals.forEach(modal => {
+                        modal.style.display = 'none';
+                    });
+                }
+            });
+            
+            // הוספת קישור במידע על קיצורי מקלדת
+            addKeyboardShortcutsHelp();
+        }
+        
+        // הוספת כפתור עזרה לקיצורי מקלדת
+        function addKeyboardShortcutsHelp() {
+            const shortcutsBtn = document.createElement('button');
+            shortcutsBtn.className = 'btn btn-primary btn-sm';
+            shortcutsBtn.innerHTML = '<i class="fas fa-keyboard"></i> קיצורי מקלדת';
+            shortcutsBtn.style.position = 'fixed';
+            shortcutsBtn.style.bottom = '20px';
+            shortcutsBtn.style.left = '20px';
+            shortcutsBtn.style.zIndex = '99';
+            shortcutsBtn.style.opacity = '0.7';
+            
+            shortcutsBtn.addEventListener('click', function() {
+                openModal('keyboard-shortcuts-modal');
+            });
+            
+            document.body.appendChild(shortcutsBtn);
+        }
+        
+        // אתחול מעבר בין תצוגת טבלה לתצוגת קנבן
+        function setupViewToggle() {
+            const tableViewBtn = document.getElementById('table-view-btn');
+            const kanbanViewBtn = document.getElementById('kanban-view-btn');
+            const tableView = document.getElementById('table-view');
+            const kanbanView = document.getElementById('kanban-view');
+            
+            tableViewBtn.addEventListener('click', function() {
+                tableViewBtn.classList.add('active');
+                kanbanViewBtn.classList.remove('active');
+                tableView.style.display = 'block';
+                kanbanView.classList.remove('active');
+            });
+            
+            kanbanViewBtn.addEventListener('click', function() {
+                kanbanViewBtn.classList.add('active');
+                tableViewBtn.classList.remove('active');
+                tableView.style.display = 'none';
+                kanbanView.classList.add('active');
+                
+                // יצירת תצוגת קנבן אם היא עדיין לא קיימת
+                renderKanbanView();
+            });
+        }
+        
+        // תצוגת קנבן למשימות
+        function renderKanbanView() {
+            // ניקוי תצוגה קיימת
+            const kanbanColumns = document.querySelectorAll('.kanban-items');
+            kanbanColumns.forEach(column => {
+                column.innerHTML = '';
+            });
+            
+            // סינון המשימות שייכות למשתמש או הצגת הכל לפי ההגדרה
+            const showOnlyMyTasks = !document.getElementById('view-all-tasks').checked;
+            const filteredTasks = showOnlyMyTasks && currentUser
+                ? tasksData.filter(task => task['אחראי ביצוע'] === currentUser.name)
+                : tasksData;
+            
+            // יצירת כרטיסי משימות
+            filteredTasks.forEach(task => {
+                // הוספת כרטיס המשימה לעמודה המתאימה
+                const status = task['סטטוס'];
+                let containerId;
+                switch(status) {
+                    case 'לביצוע': containerId = 'kanban-new'; break;
+                    case 'בתהליך': containerId = 'kanban-in-progress'; break;
+                    case 'הושלם': containerId = 'kanban-completed'; break;
+                    case 'מעוכב': containerId = 'kanban-delayed'; break;
+                    default: containerId = 'kanban-new';
+                }
+                
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                
+                const card = document.createElement('div');
+                card.className = 'kanban-card';
+                card.dataset.taskId = task['מזהה משימה'];
+                
+                // קביעת סגנון עדיפות
+                let priorityClass = '';
+                if (task['עדיפות'] === 'גבוהה') {
+                    priorityClass = 'priority-high';
+                } else if (task['עדיפות'] === 'בינונית') {
+                    priorityClass = 'priority-medium';
+                } else {
+                    priorityClass = 'priority-low';
+                }
+                
+                // פורמט תאריך
+                const dueDate = task['תאריך יעד'] ? formatDate(task['תאריך יעד']) : '';
+                
+                card.innerHTML = `
+                    <div class="kanban-card-header">
+                        <span>#${task['מזהה משימה']}</span>
+                        <span>${dueDate}</span>
+                    </div>
+                    <div class="kanban-card-title">${task['שם המשימה']}</div>
+                    <div class="kanban-card-footer">
+                        <span class="priority ${priorityClass}">${task['עדיפות']}</span>
+                        <span class="avatar" title="${task['אחראי ביצוע']}">${task['אחראי ביצוע'].substring(0, 1)}</span>
+                    </div>
+                `;
+                
+                // הוספת אירוע לחיצה להצגת פרטי המשימה
+                card.addEventListener('click', function() {
+                    viewTask(task['מזהה משימה']);
+                });
+                
+                container.appendChild(card);
+            });
+            
+            // עדכון ספירת המשימות בכל עמודה
+            updateKanbanCounters();
+            
+            // הפעלת Sortable בעמודות
+            setupKanbanSortable();
+        }
+        
+        // עדכון ספירת המשימות בכל עמודה בתצוגת קנבן
+        function updateKanbanCounters() {
+            const counts = {
+                'לביצוע': document.getElementById('kanban-new').childElementCount,
+                'בתהליך': document.getElementById('kanban-in-progress').childElementCount,
+                'הושלם': document.getElementById('kanban-completed').childElementCount,
+                'מעוכב': document.getElementById('kanban-delayed').childElementCount
+            };
+            
+            document.querySelectorAll('.kanban-column').forEach(column => {
+                const status = column.dataset.status;
+                const counter = column.querySelector('.count');
+                if (counter && counts[status] !== undefined) {
+                    counter.textContent = counts[status];
+                }
+            });
+        }
+        
+        // הפעלת תכונת גרירה ושחרור בתצוגת קנבן
+        function setupKanbanSortable() {
+            // ניקוי Sortable קיים
+            Object.values(kanbanSortables).forEach(sortable => {
+                if (sortable && typeof sortable.destroy === 'function') {
+                    sortable.destroy();
+                }
+            });
+            
+            // איפוס מפת ה-Sortable
+            kanbanSortables = {};
+            
+            // הפעלת Sortable בכל עמודה
+            const columns = ['kanban-new', 'kanban-in-progress', 'kanban-completed', 'kanban-delayed'];
+            columns.forEach(columnId => {
+                const column = document.getElementById(columnId);
+                if (!column) return;
+                
+                kanbanSortables[columnId] = Sortable.create(column, {
+                    group: 'tasks',
+                    animation: 150,
+                    ghostClass: 'kanban-card-ghost',
+                    onEnd: function(evt) {
+                        // מציאת סטטוס העמודה החדשה
+                        const newColumn = evt.to;
+                        const newColumnParent = newColumn.closest('.kanban-column');
+                        if (!newColumnParent) return;
+                        
+                        const newStatus = newColumnParent.dataset.status;
+                        const taskId = evt.item.dataset.taskId;
+                        
+                        // עדכון המשימה עם הסטטוס החדש
+                        updateTaskStatus(taskId, newStatus);
+                        
+                        // עדכון ספירת המשימות
+                        updateKanbanCounters();
+                    }
+                });
+            });
+        }
+        
+        // אתחול תפריט הקשר (קליק ימני) למשימות
+        function setupContextMenu() {
+            const contextMenu = document.getElementById('context-menu');
+            
+            // אירוע קליק ימני לפתיחת תפריט ההקשר
+            document.addEventListener('contextmenu', function(e) {
+                // בדיקה אם לחצנו על שורת משימה או על כרטיס קנבן
+                let taskElement = null;
+                let taskId = null;
+                let isSubtask = false;
+                
+                // בדיקה אם לחצנו על שורת טבלה
+                if (e.target.closest('tr')) {
+                    const row = e.target.closest('tr');
+                    if (row.closest('#tasks-table-body')) {
+                        taskElement = row;
+                        taskId = row.querySelector('td:first-child')?.textContent;
+                        isSubtask = false;
+                    } else if (row.closest('#subtasks-table-body')) {
+                        taskElement = row;
+                        taskId = row.querySelector('td:first-child')?.textContent;
+                        isSubtask = true;
+                    }
+                }
+                // בדיקה אם לחצנו על כרטיס קנבן
+                else if (e.target.closest('.kanban-card')) {
+                    const card = e.target.closest('.kanban-card');
+                    taskElement = card;
+                    taskId = card.dataset.taskId;
+                    isSubtask = false;
+                }
+                
+                if (taskElement && taskId) {
+                    e.preventDefault();
+                    
+                    // שמירת המידע על המשימה בתפריט ההקשר
+                    contextMenu.dataset.taskId = taskId;
+                    contextMenu.dataset.isSubtask = isSubtask;
+                    
+                    // מיקום התפריט
+                    contextMenu.style.top = `${e.pageY}px`;
+                    contextMenu.style.left = `${e.pageX}px`;
+                    contextMenu.style.display = 'block';
+                }
+            });
+            
+            // סגירת תפריט הקשר בלחיצה בכל מקום אחר
+            document.addEventListener('click', function() {
+                contextMenu.style.display = 'none';
+            });
+            
+            // אירועי לחיצה בתפריט ההקשר
+            contextMenu.addEventListener('click', function(e) {
+                // מציאת הפעולה שנבחרה
+                const action = e.target.closest('li')?.dataset.action;
+                if (!action) return;
+                
+                const taskId = contextMenu.dataset.taskId;
+                const isSubtask = contextMenu.dataset.isSubtask === 'true';
+                
+                switch(action) {
+                    case 'view':
+                        isSubtask ? viewSubtask(taskId) : viewTask(taskId);
+                        break;
+                    case 'edit':
+                        isSubtask ? editSubtask(taskId) : editTask(taskId);
+                        break;
+                    case 'status-new':
+                        isSubtask ? updateSubtaskStatus(taskId, 'לביצוע') : updateTaskStatus(taskId, 'לביצוע');
+                        break;
+                    case 'status-in-progress':
+                        isSubtask ? updateSubtaskStatus(taskId, 'בתהליך') : updateTaskStatus(taskId, 'בתהליך');
+                        break;
+                    case 'status-completed':
+                        isSubtask ? updateSubtaskStatus(taskId, 'הושלם') : updateTaskStatus(taskId, 'הושלם');
+                        break;
+                    case 'status-delayed':
+                        isSubtask ? updateSubtaskStatus(taskId, 'מעוכב') : updateTaskStatus(taskId, 'מעוכב');
+                        break;
+                    case 'add-subtask':
+                        if (!isSubtask) {
+                            document.getElementById('subtask-form').reset();
+                            document.getElementById('subtask-modal-title').textContent = 'הוספת תת-משימה חדשה';
+                            document.getElementById('subtask-id').value = generateUniqueId('subtask');
+                            document.getElementById('subtask-parent').value = taskId;
+                            document.getElementById('subtask-start-date').value = getCurrentDate();
+                            openModal('subtask-modal');
+                        }
+                        break;
+                    case 'delete':
+                        isSubtask ? deleteSubtask(taskId) : deleteTask(taskId);
+                        break;
+                }
+            });
+        }
+        
+        // תבניות משימות - שמירת תבנית חדשה
+        function saveTaskAsTemplate() {
+            // איסוף נתונים מהטופס
+            const taskName = document.getElementById('task-name').value;
+            const taskDescription = document.getElementById('task-description').value;
+            const taskPriority = document.getElementById('task-priority').value;
+            const taskCategory = document.getElementById('task-category').value;
+            
+            if (!taskName) {
+                showNotification('danger', 'יש להזין שם משימה לפני שמירה כתבנית', 'exclamation-triangle');
+                return;
+            }
+            
+            // שאל את המשתמש לשם התבנית
+            const templateName = prompt('הזן שם לתבנית המשימה:', taskName);
+            if (!templateName) return;
+            
+            // שמירת התבנית
+            const templateId = `template-${Date.now()}`;
+            taskTemplates[templateId] = {
+                id: templateId,
+                name: templateName,
+                data: {
+                    name: taskName,
+                    description: taskDescription,
+                    priority: taskPriority,
+                    category: taskCategory
+                }
+            };
+            
+            // שמירה באחסון מקומי
+            saveTaskTemplates();
+            
+            showNotification('success', `התבנית "${templateName}" נשמרה בהצלחה`, 'check-circle');
+        }
+        
+        // תבניות משימות - טעינת תבנית
+        function loadTaskTemplate(templateId) {
+            const template = taskTemplates[templateId];
+            if (!template) return;
+            
+            // מילוי הטופס בנתוני התבנית
+            document.getElementById('task-name').value = template.data.name;
+            document.getElementById('task-description').value = template.data.description || '';
+            document.getElementById('task-priority').value = template.data.priority;
+            
+            // בדיקה שהקטגוריה קיימת לפני מילוי הערך
+            const categorySelect = document.getElementById('task-category');
+            const categoryExists = Array.from(categorySelect.options).some(option => option.value === template.data.category);
+            if (categoryExists) {
+                categorySelect.value = template.data.category;
+            }
+            
+            showNotification('info', `התבנית "${template.name}" נטענה בהצלחה`, 'info-circle');
+        }
+        
+        // יצירת תפריט תבניות משימות
+        function createTaskTemplatesMenu() {
+            // בדיקה אם יש תבניות
+            const hasTemplates = Object.keys(taskTemplates).length > 0;
+            if (!hasTemplates) return;
+            
+            // יצירת כפתור תבניות
+            const templatesBtn = document.getElementById('load-template-btn');
+            if (!templatesBtn) {
+                const btn = document.createElement('button');
+                btn.id = 'load-template-btn';
+                btn.type = 'button';
+                btn.className = 'btn btn-info';
+                btn.innerHTML = '<i class="fas fa-paste btn-icon"></i>טען תבנית';
+                
+                // יצירת תפריט נפתח לתבניות
+                const menu = document.createElement('div');
+                menu.className = 'templates-menu';
+                menu.style.display = 'none';
+                menu.style.position = 'absolute';
+                menu.style.backgroundColor = 'white';
+                menu.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+                menu.style.borderRadius = '4px';
+                menu.style.padding = '0.5rem 0';
+                menu.style.zIndex = '1001';
+                
+                // הוספת אפשרויות התבניות
+                Object.values(taskTemplates).forEach(template => {
+                    const item = document.createElement('div');
+                    item.className = 'template-item';
+                    item.textContent = template.name;
+                    item.style.padding = '0.5rem 1rem';
+                    item.style.cursor = 'pointer';
+                    
+                    item.addEventListener('mouseenter', function() {
+                        this.style.backgroundColor = '#f5f5f5';
+                    });
+                    
+                    item.addEventListener('mouseleave', function() {
+                        this.style.backgroundColor = '';
+                    });
+                    
+                    item.addEventListener('click', function() {
+                        loadTaskTemplate(template.id);
+                        menu.style.display = 'none';
+                    });
+                    
+                    menu.appendChild(item);
+                });
+                
+                // הוספת אפשרות למחיקת תבניות
+                if (hasTemplates) {
+                    const separator = document.createElement('hr');
+                    separator.style.margin = '0.5rem 0';
+                    separator.style.borderTop = '1px solid #eee';
+                    menu.appendChild(separator);
+                    
+                    const manageItem = document.createElement('div');
+                    manageItem.className = 'template-item';
+                    manageItem.textContent = 'ניהול תבניות...';
+                    manageItem.style.padding = '0.5rem 1rem';
+                    manageItem.style.cursor = 'pointer';
+                    manageItem.style.color = '#1976D2';
+                    
+                    manageItem.addEventListener('mouseenter', function() {
+                        this.style.backgroundColor = '#f5f5f5';
+                    });
+                    
+                    manageItem.addEventListener('mouseleave', function() {
+                        this.style.backgroundColor = '';
+                    });
+                    
+                    manageItem.addEventListener('click', function() {
+                        openTemplatesManager();
+                        menu.style.display = 'none';
+                    });
+                    
+                    menu.appendChild(manageItem);
+                }
+                
+                // תנהגות פתיחת התפריט
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const rect = this.getBoundingClientRect();
+                    menu.style.top = `${rect.bottom + window.scrollY}px`;
+                    menu.style.left = `${rect.left + window.scrollX}px`;
+                    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+                });
+                
+                // סגירת התפריט בלחיצה מחוץ לו
+                document.addEventListener('click', function() {
+                    menu.style.display = 'none';
+                });
+                
+                document.body.appendChild(menu);
+                
+                // הוספת הכפתור לטופס
+                const modalFooter = document.querySelector('#task-modal .modal-footer');
+                modalFooter.insertBefore(btn, document.getElementById('save-task-btn'));
+            }
+        }
+        
+        // ניהול תבניות משימות
+        function openTemplatesManager() {
+            // בדיקה אם יש תבניות
+            const hasTemplates = Object.keys(taskTemplates).length > 0;
+            if (!hasTemplates) {
+                showNotification('info', 'אין תבניות משימות שמורות', 'info-circle');
+                return;
+            }
+            
+            // יצירת מודאל לניהול תבניות
+            let modal = document.getElementById('templates-manager-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'templates-manager-modal';
+                modal.className = 'modal';
+                
+                const modalContent = document.createElement('div');
+                modalContent.className = 'modal-content';
+                
+                modalContent.innerHTML = `
+                    <button class="modal-close">&times;</button>
+                    <div class="modal-header">
+                        <h3 class="modal-title">ניהול תבניות משימות</h3>
+                    </div>
+                    <div id="templates-list">
+                        <!-- יתמלא דינמית -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger" id="delete-all-templates-btn">
+                            <i class="fas fa-trash btn-icon"></i>מחק הכל
+                        </button>
+                        <button type="button" class="btn btn-primary" id="close-templates-manager-btn">סגור</button>
+                    </div>
+                `;
+                
+                modal.appendChild(modalContent);
+                document.body.appendChild(modal);
+                
+                // אירועים לכפתורים
+                modal.querySelector('.modal-close').addEventListener('click', function() {
+                    modal.style.display = 'none';
+                });
+                
+                document.getElementById('close-templates-manager-btn').addEventListener('click', function() {
+                    modal.style.display = 'none';
+                });
+                
+                document.getElementById('delete-all-templates-btn').addEventListener('click', function() {
+                    if (confirm('האם אתה בטוח שברצונך למחוק את כל התבניות?')) {
+                        taskTemplates = {};
+                        saveTaskTemplates();
+                        showNotification('success', 'כל התבניות נמחקו בהצלחה', 'check-circle');
+                        modal.style.display = 'none';
+                    }
+                });
+            }
+            
+            // מילוי רשימת התבניות
+            const templatesList = document.getElementById('templates-list');
+            templatesList.innerHTML = '';
+            
+            Object.values(taskTemplates).forEach(template => {
+                const item = document.createElement('div');
+                item.className = 'template-manager-item';
+                item.style.padding = '1rem';
+                item.style.borderBottom = '1px solid #eee';
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+                
+                item.innerHTML = `
+                    <div class="template-info">
+                        <div class="template-name" style="font-weight: bold;">${template.name}</div>
+                        <div class="template-description" style="color: #666; font-size: 0.9rem;">${template.data.name}</div>
+                    </div>
+                    <div class="template-actions">
+                        <button class="btn btn-sm btn-info load-template-btn" data-id="${template.id}">
+                            <i class="fas fa-upload"></i> טען
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-template-btn" data-id="${template.id}">
+                            <i class="fas fa-trash"></i> מחק
+                        </button>
+                    </div>
+                `;
+                
+                // אירועים לכפתורים
+                item.querySelector('.load-template-btn').addEventListener('click', function() {
+                    loadTaskTemplate(this.dataset.id);
+                    modal.style.display = 'none';
+                });
+                
+                item.querySelector('.delete-template-btn').addEventListener('click', function() {
+                    const templateId = this.dataset.id;
+                    const templateName = taskTemplates[templateId].name;
+                    
+                    if (confirm(`האם אתה בטוח שברצונך למחוק את התבנית "${templateName}"?`)) {
+                        delete taskTemplates[templateId];
+                        saveTaskTemplates();
+                        item.remove();
+                        
+                        // בדיקה אם נשארו תבניות
+                        if (Object.keys(taskTemplates).length === 0) {
+                            templatesList.innerHTML = '<div style="padding: 1rem; text-align: center; color: #666;">אין תבניות משימות שמורות</div>';
+                        }
+                        
+                        showNotification('success', `התבנית "${templateName}" נמחקה בהצלחה`, 'check-circle');
+                    }
+                });
+                
+                templatesList.appendChild(item);
+            });
+            
+            // הצגת המודאל
+            modal.style.display = 'flex';
+        }
+        
+        // =========================================
+        // פונקציות טעינת נתונים
+        // =========================================
+        
+        // טעינת כל הנתונים
+        async function fetchAllData() {
+            try {
+                // טעינת כל סוגי הנתונים במקביל
+                const [tasks, subtasks, team, categories, logs] = await Promise.all([
+                    fetchCSV(CONFIG.SHEETS.tasks),
+                    fetchCSV(CONFIG.SHEETS.subtasks),
+                    fetchCSV(CONFIG.SHEETS.team),
+                    fetchCSV(CONFIG.SHEETS.categories),
+                    fetchCSV(CONFIG.SHEETS.logs)
+                ]);
+                
+                // עיבוד הנתונים לפי הגרסה האחרונה של כל פריט
+                tasksData = getLatestVersions(tasks, 'מזהה משימה');
+                subtasksData = getLatestVersions(subtasks, 'מזהה תת משימה');
+                teamData = getLatestVersions(team, 'שם מלא');
+                categoriesData = getLatestVersions(categories, 'שם קטגוריה');
+                logsData = logs; // לוגים לא עוברים קיבוץ, כי אנחנו רוצים את ההיסטוריה המלאה
+                
+                // הצגת הנתונים בטבלאות
+                renderTasks();
+                renderSubtasks();
+                renderTeam();
+                renderCategories();
+                renderLogs();
+                
+                // הצגת הדשבורד
+                renderDashboard();
+                
+                // עדכון סלקטים בטפסים
+                updateFormSelects();
+                
+                // עדכון תצוגת קנבן אם היא פעילה
+                if (document.getElementById('kanban-view').classList.contains('active')) {
+                    renderKanbanView();
+                }
+                
+                // בדיקת התראות
+                checkAndDisplayNotifications();
+                
+                // יצירת תפריט תבניות משימות
+                createTaskTemplatesMenu();
+                
+            } catch (error) {
+                console.error('שגיאה בטעינת הנתונים:', error);
+                showNotification('danger', 'שגיאה בטעינת הנתונים. נא לרענן את הדף.', 'exclamation-triangle');
+            }
+        }
+      
