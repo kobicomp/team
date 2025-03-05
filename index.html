@@ -1702,7 +1702,7 @@
 
           snapshot.forEach(doc => {
             const userData = doc.data();
-            const isCurrentAdmin = userData.email === "thekobino@gmail.com";
+          const isCurrentAdmin = userData.email === adminEmail;
 
             usersHTML += `
               <div class="user-management-item">
