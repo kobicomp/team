@@ -1281,7 +1281,7 @@
 
   // פונקציה לטעינת תצורת Firebase מהשרת
   function initializeFirebase() {
-    showLoader(); // הצג לוודר בזמן טעינה
+    showLoader();
 
     fetch('/api/firebase-config')
       .then(response => {
@@ -1290,17 +1290,20 @@
         }
         return response.json();
       })
-      .then(firebaseConfig => {
+      .then(data => {
         console.log('תצורת Firebase נטענה בהצלחה');
 
-        // אתחול Firebase
-        firebase.initializeApp(firebaseConfig);
+        // שמירת אימייל האדמין מהתשובה
+        adminEmail = data.adminEmail;
+
+        // אתחול Firebase עם תצורה שהתקבלה
+        firebase.initializeApp(data.firebaseConfig);
 
         // קיצורי דרך לשירותים
         auth = firebase.auth();
         db = firebase.firestore();
 
-        // מעקב אחר התחברות המשתמש נשאר כפי שהיה
+        // מעקב אחר התחברות המשתמש
         startAuthListener();
       })
       .catch(error => {
@@ -1319,7 +1322,7 @@
         showLoader();
 
         // אם זה המנהל, אפשר לו גישה ישירה
-        if (user.email === "thekobino@gmail.com") {
+      if (user.email === adminEmail) {
           // המשתמש הוא המנהל
           currentUser = {
             uid: user.uid,
@@ -1430,6 +1433,7 @@
   }
 
     // משתנים גלובליים
+    let adminEmail = null;
     let currentUser = null;
     let currentProjectId = null;
     let currentProjectData = null;
