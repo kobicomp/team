@@ -1332,102 +1332,112 @@
 
   // פונקציה למעקב אחר מצב התחברות המשתמש
   function startAuthListener() {
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        // המשתמש מחובר - נבדוק אם הוא מורשה
-        showLoader();
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      // המשתמש מחובר - נבדוק אם הוא מורשה
+      showLoader();
 
-        // אם זה המנהל, אפשר לו גישה ישירה
-        if (user.email === adminEmail) {
-          // המשתמש הוא המנהל
-          currentUser = {
-            uid: user.uid,
-            email: user.email,
-            isAdmin: true
-          };
+      // אם זה המנהל, אפשר לו גישה ישירה
+      if (user.email === adminEmail) {
+        // המשתמש הוא המנהל
+        currentUser = {
+          uid: user.uid,
+          email: user.email,
+          isAdmin: true
+        };
 
-          // עדכון ממשק המשתמש
-          document.getElementById('auth-section').classList.add('hidden');
-          document.getElementById('app-section').classList.remove('hidden');
-          // המשך הקוד הקיים למנהל...
-          hideLoader();
-        } else {
-          // בדיקת סטטוס המשתמש מטבלת Users
-          db.collection('users').doc(user.uid).get()
-            .then(doc => {
-              if (doc.exists) {
-                const userData = doc.data();
+        // עדכון ממשק המשתמש
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('app-section').classList.remove('hidden');
+        document.getElementById('user-email').textContent = user.email;
+        document.getElementById('user-avatar').textContent = user.email.charAt(0).toUpperCase();
 
-                // בדיקת סטטוס המשתמש
-                if (userData.status === 'approved') {
-                  // המשתמש מאושר
-                  currentUser = {
-                    uid: user.uid,
-                    email: user.email,
-                    isAdmin: false
-                  };
+        // עדכון תפריט למנהל
+        updateUserMenuForAdmin();
 
-                  // עדכון ממשק המשתמש למשתמש מאושר
-                  document.getElementById('auth-section').classList.add('hidden');
-                  document.getElementById('app-section').classList.remove('hidden');
-                  document.getElementById('user-email').textContent = user.email;
-                  document.getElementById('user-avatar').textContent = user.email.charAt(0).toUpperCase();
+        // שמירת המידע על המשתמש אם עוד לא קיים
+        ensureUserIsRegistered(user.email, user.uid, true);
 
-                  // טעינת הפרויקטים של המשתמש
-                  loadProjects();
-                } else if (userData.status === 'pending') {
-                  // המשתמש ממתין לאישור
-                  document.getElementById('auth-error').textContent = 'החשבון שלך ממתין לאישור מנהל המערכת. נסה שוב מאוחר יותר.';
-                  document.getElementById('auth-error').style.display = 'block';
-
-                  // ניתוק המשתמש
-                  auth.signOut();
-                } else if (userData.status === 'rejected') {
-                  // המשתמש נדחה
-                  document.getElementById('auth-error').textContent = 'בקשת ההרשמה שלך נדחתה על ידי מנהל המערכת.';
-                  document.getElementById('auth-error').style.display = 'block';
-
-                  // ניתוק המשתמש
-                  auth.signOut();
-                }
-              } else {
-                // אין מידע על המשתמש - צור רשומה עם סטטוס ממתין
-                return db.collection('users').doc(user.uid).set({
-                  userId: user.uid,
-                  email: user.email,
-                  displayName: user.email.split('@')[0],
-                  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                  status: 'pending'
-                }).then(() => {
-                  document.getElementById('auth-error').textContent = 'החשבון שלך ממתין לאישור מנהל המערכת. נסה שוב מאוחר יותר.';
-                  document.getElementById('auth-error').style.display = 'block';
-
-                  // ניתוק המשתמש
-                  auth.signOut();
-                });
-              }
-              hideLoader();
-            })
-            .catch(error => {
-              hideLoader();
-              console.error("Error checking user status:", error);
-              document.getElementById('auth-error').textContent = 'שגיאה בבדיקת הרשאות: ' + error.message;
-              document.getElementById('auth-error').style.display = 'block';
-
-              // ניתוק המשתמש במקרה של שגיאה
-              auth.signOut();
-            });
-        }
-      } else {
-        // המשתמש לא מחובר
-        currentUser = null;
-        document.getElementById('auth-section').classList.remove('hidden');
-        document.getElementById('app-section').classList.add('hidden');
-        document.getElementById('auth-error').style.display = 'none';
+        // טעינת הפרויקטים של המשתמש
+        loadProjects();
         hideLoader();
+      } else {
+        // בדיקת סטטוס המשתמש
+        db.collection('users').doc(user.uid).get()
+          .then(doc => {
+            if (doc.exists) {
+              const userData = doc.data();
+
+              if (userData.status === 'approved') {
+                // המשתמש מאושר
+                currentUser = {
+                  uid: user.uid,
+                  email: user.email,
+                  isAdmin: false
+                };
+
+                // עדכון ממשק המשתמש
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('app-section').classList.remove('hidden');
+                document.getElementById('user-email').textContent = user.email;
+                document.getElementById('user-avatar').textContent = user.email.charAt(0).toUpperCase();
+
+                // טעינת הפרויקטים של המשתמש
+                loadProjects();
+              } else if (userData.status === 'pending') {
+                // המשתמש ממתין לאישור
+                document.getElementById('auth-error').textContent = 'החשבון שלך ממתין לאישור מנהל המערכת. נסה שוב מאוחר יותר.';
+                document.getElementById('auth-error').style.display = 'block';
+
+                // ניתוק המשתמש
+                auth.signOut();
+              } else if (userData.status === 'rejected') {
+                // המשתמש נדחה
+                document.getElementById('auth-error').textContent = 'בקשת ההרשמה שלך נדחתה על ידי מנהל המערכת.';
+                document.getElementById('auth-error').style.display = 'block';
+
+                // ניתוק המשתמש
+                auth.signOut();
+              }
+            } else {
+              // אין מידע על המשתמש - יצירת רשומה עם סטטוס ממתין
+              return db.collection('users').doc(user.uid).set({
+                userId: user.uid,
+                email: user.email,
+                displayName: user.email.split('@')[0],
+                isAdmin: false,
+                status: 'pending',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              }).then(() => {
+                document.getElementById('auth-error').textContent = 'החשבון שלך ממתין לאישור מנהל המערכת. נסה שוב מאוחר יותר.';
+                document.getElementById('auth-error').style.display = 'block';
+
+                // ניתוק המשתמש
+                auth.signOut();
+              });
+            }
+            hideLoader();
+          })
+          .catch(error => {
+            hideLoader();
+            console.error("Error checking user status:", error);
+            document.getElementById('auth-error').textContent = 'שגיאה בבדיקת הרשאות: ' + error.message;
+            document.getElementById('auth-error').style.display = 'block';
+
+            // ניתוק המשתמש במקרה של שגיאה
+            auth.signOut();
+          });
       }
-    });
-  }
+    } else {
+      // המשתמש לא מחובר
+      currentUser = null;
+      document.getElementById('auth-section').classList.remove('hidden');
+      document.getElementById('app-section').classList.add('hidden');
+      document.getElementById('auth-error').style.display = 'none';
+      hideLoader();
+    }
+  });
+}
 
     // משתנים גלובליים
     let adminEmail = null;
@@ -1928,24 +1938,32 @@
     // מעקב אחר מצב התחברות המשתמש
 
       // וידוא שהמשתמש רשום במערכת
-      function ensureUserIsRegistered(email, uid) {
-        // בדיקה אם המשתמש כבר רשום במערכת
-        db.collection('users').doc(uid).get()
-          .then(doc => {
-            if (!doc.exists) {
-              // הוספת המשתמש למערכת
-              return db.collection('users').doc(uid).set({
-                userId: uid,
-                email: email,
-                displayName: email.split('@')[0], // שם תצוגה ברירת מחדל
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-              });
-            }
-          })
-          .catch(error => {
-            console.error("Error checking user:", error);
+      function ensureUserIsRegistered(email, uid, isAdmin = false) {
+    // בדיקה אם המשתמש כבר רשום במערכת
+    db.collection('users').doc(uid).get()
+      .then(doc => {
+        if (!doc.exists) {
+          // הוספת המשתמש למערכת
+          return db.collection('users').doc(uid).set({
+            userId: uid,
+            email: email,
+            displayName: email.split('@')[0],
+            isAdmin: isAdmin,
+            status: 'approved',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
-      }
+        } else if (isAdmin && !doc.data().isAdmin) {
+          // עדכון המשתמש כמנהל אם צריך
+          return db.collection('users').doc(uid).update({
+            isAdmin: true,
+            status: 'approved'
+          });
+        }
+      })
+      .catch(error => {
+        console.error("Error checking user:", error);
+      });
+  }
 
       // פונקציות אימות
       function login() {
@@ -1967,59 +1985,76 @@
       }
 
       function register() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
 
-    if (!email || !password) {
-      showAuthError('אנא הזן אימייל וסיסמה');
-      return;
+      if (!email || !password) {
+        showAuthError('אנא הזן אימייל וסיסמה');
+        return;
+      }
+
+      if (password.length < 6) {
+        showAuthError('הסיסמה חייבת להכיל לפחות 6 תווים');
+        return;
+      }
+
+      showLoader();
+
+      // בדיקה אם האימייל הוא המנהל
+      if (email === adminEmail) {
+        // זהו המנהל - אפשר לו להירשם ישירות
+        auth.createUserWithEmailAndPassword(email, password)
+          .then(userCredential => {
+            const user = userCredential.user;
+
+            // יצירת רשומת משתמש מנהל בדאטאבייס
+            return db.collection('users').doc(user.uid).set({
+              userId: user.uid,
+              email: email,
+              displayName: email.split('@')[0],
+              isAdmin: true,
+              status: 'approved',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          })
+          .then(() => {
+            hideLoader();
+            // המשתמש יעבור אוטומטית למסך הבא דרך מאזין האימות
+          })
+          .catch(error => {
+            hideLoader();
+            console.error("Registration error:", error);
+            showAuthError('שגיאה בהרשמה: ' + error.message);
+          });
+      } else {
+        // רישום משתמש רגיל
+        auth.createUserWithEmailAndPassword(email, password)
+          .then(userCredential => {
+            const user = userCredential.user;
+
+            // שמירת המידע על המשתמש עם סטטוס "ממתין לאישור"
+            return db.collection('users').doc(user.uid).set({
+              userId: user.uid,
+              email: email,
+              displayName: email.split('@')[0],
+              isAdmin: false,
+              status: 'pending',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          })
+          .then(() => {
+            hideLoader();
+            alert('נרשמת בהצלחה! הבקשה שלך ממתינה לאישור המנהל. תנותק מהמערכת עד לאישור.');
+            // התנתקות אוטומטית עד לאישור
+            return auth.signOut();
+          })
+          .catch(error => {
+            hideLoader();
+            console.error("Registration error:", error);
+            showAuthError('שגיאה בהרשמה: ' + error.message);
+          });
+      }
     }
-
-    if (password.length < 6) {
-      showAuthError('הסיסמה חייבת להכיל לפחות 6 תווים');
-      return;
-    }
-
-    showLoader();
-
-    // בדיקה אם האימייל הוא המנהל
-    if (email === adminEmail) {
-      // זהו המנהל - אפשר לו להירשם ישירות
-      auth.createUserWithEmailAndPassword(email, password)
-        .catch(error => {
-          hideLoader();
-          console.error("Registration error:", error);
-          showAuthError('שגיאה בהרשמה: ' + error.message);
-        });
-      return;
-    }
-
-    // רישום משתמש רגיל עם סטטוס "ממתין לאישור"
-    auth.createUserWithEmailAndPassword(email, password)
-      .then(userCredential => {
-        const user = userCredential.user;
-
-        // שמירת המידע על המשתמש עם סטטוס "ממתין לאישור"
-        return db.collection('users').doc(user.uid).set({
-          userId: user.uid,
-          email: email,
-          displayName: email.split('@')[0],
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          status: 'pending'  // סטטוס ממתין לאישור
-        });
-      })
-      .then(() => {
-        hideLoader();
-        alert('נרשמת בהצלחה! הבקשה שלך ממתינה לאישור המנהל.');
-        // התנתקות אוטומטית עד לאישור
-        auth.signOut();
-      })
-      .catch(error => {
-        hideLoader();
-        console.error("Registration error:", error);
-        showAuthError('שגיאה בהרשמה: ' + error.message);
-      });
-  }
 
       function logout() {
         showLoader();
