@@ -1866,7 +1866,7 @@
         showLoader();
 
         // בדוק אם האימייל מורשה לפני הרישום (או אם זה המנהל)
-        if (email === "thekobino@gmail.com") {
+      if (email === adminEmail) {
           // זהו המנהל - אפשר לו להירשם ישירות
           auth.createUserWithEmailAndPassword(email, password)
             .catch(error => {
