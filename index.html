@@ -1267,7 +1267,23 @@
       </div>
     </div>
   </div>
+  <!-- מודל בקשות הרשמה -->
+  <div id="pending-registrations-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">בקשות הרשמה ממתינות</h3>
+        <span class="modal-close">&times;</span>
+      </div>
 
+      <div id="pending-registrations-list" class="user-management-list">
+        <div>טוען בקשות הרשמה...</div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="close-registrations-btn" class="btn btn-outline">סגור</button>
+      </div>
+    </div>
+  </div>
   <!-- ספריות Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
@@ -1322,7 +1338,7 @@
         showLoader();
 
         // אם זה המנהל, אפשר לו גישה ישירה
-      if (user.email === adminEmail) {
+        if (user.email === adminEmail) {
           // המשתמש הוא המנהל
           currentUser = {
             uid: user.uid,
@@ -1333,92 +1349,73 @@
           // עדכון ממשק המשתמש
           document.getElementById('auth-section').classList.add('hidden');
           document.getElementById('app-section').classList.remove('hidden');
-          document.getElementById('user-email').textContent = user.email;
-          document.getElementById('user-avatar').textContent = user.email.charAt(0).toUpperCase();
-
-          // עדכון תפריט למנהל
-          updateUserMenuForAdmin();
-
-          // שמירת המידע על המשתמש אם עוד לא קיים
-          ensureUserIsRegistered(user.email, user.uid);
-
-          // הוסף את המנהל לרשימת המשתמשים המורשים אם עוד לא קיים
-          db.collection('authorized_users').doc(user.uid).get()
+          // המשך הקוד הקיים למנהל...
+          hideLoader();
+        } else {
+          // בדיקת סטטוס המשתמש מטבלת Users
+          db.collection('users').doc(user.uid).get()
             .then(doc => {
-              if (!doc.exists) {
-                return db.collection('authorized_users').doc(user.uid).set({
-                  isAuthorized: true,
+              if (doc.exists) {
+                const userData = doc.data();
+
+                // בדיקת סטטוס המשתמש
+                if (userData.status === 'approved') {
+                  // המשתמש מאושר
+                  currentUser = {
+                    uid: user.uid,
+                    email: user.email,
+                    isAdmin: false
+                  };
+
+                  // עדכון ממשק המשתמש למשתמש מאושר
+                  document.getElementById('auth-section').classList.add('hidden');
+                  document.getElementById('app-section').classList.remove('hidden');
+                  document.getElementById('user-email').textContent = user.email;
+                  document.getElementById('user-avatar').textContent = user.email.charAt(0).toUpperCase();
+
+                  // טעינת הפרויקטים של המשתמש
+                  loadProjects();
+                } else if (userData.status === 'pending') {
+                  // המשתמש ממתין לאישור
+                  document.getElementById('auth-error').textContent = 'החשבון שלך ממתין לאישור מנהל המערכת. נסה שוב מאוחר יותר.';
+                  document.getElementById('auth-error').style.display = 'block';
+
+                  // ניתוק המשתמש
+                  auth.signOut();
+                } else if (userData.status === 'rejected') {
+                  // המשתמש נדחה
+                  document.getElementById('auth-error').textContent = 'בקשת ההרשמה שלך נדחתה על ידי מנהל המערכת.';
+                  document.getElementById('auth-error').style.display = 'block';
+
+                  // ניתוק המשתמש
+                  auth.signOut();
+                }
+              } else {
+                // אין מידע על המשתמש - צור רשומה עם סטטוס ממתין
+                return db.collection('users').doc(user.uid).set({
+                  userId: user.uid,
                   email: user.email,
-                  authorizedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                  isAdmin: true
+                  displayName: user.email.split('@')[0],
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                  status: 'pending'
+                }).then(() => {
+                  document.getElementById('auth-error').textContent = 'החשבון שלך ממתין לאישור מנהל המערכת. נסה שוב מאוחר יותר.';
+                  document.getElementById('auth-error').style.display = 'block';
+
+                  // ניתוק המשתמש
+                  auth.signOut();
                 });
               }
-              return Promise.resolve();
-            })
-            .then(() => {
-              // טעינת הפרויקטים של המשתמש
-              loadProjects();
-              console.log("Admin user logged in");
               hideLoader();
             })
             .catch(error => {
-              console.error("Error setting admin as authorized:", error);
               hideLoader();
-            });
-        } else {
-          // בדיקה אם המשתמש מוגדר כמורשה
-          db.collection('authorized_users').doc(user.uid).get()
-            .then(doc => {
-              if (doc.exists && doc.data().isAuthorized === true) {
-                // המשתמש מורשה
-                currentUser = {
-                  uid: user.uid,
-                  email: user.email,
-                  isAdmin: false
-                };
-
-                // עדכון ממשק המשתמש
-                document.getElementById('auth-section').classList.add('hidden');
-                document.getElementById('app-section').classList.remove('hidden');
-                document.getElementById('user-email').textContent = user.email;
-                document.getElementById('user-avatar').textContent = user.email.charAt(0).toUpperCase();
-
-                // שמירת המידע על המשתמש אם עוד לא קיים
-                ensureUserIsRegistered(user.email, user.uid);
-
-                // טעינת הפרויקטים של המשתמש
-                loadProjects();
-              } else {
-                // המשתמש לא מורשה - ניתוק אוטומטי
-                console.log("User not authorized:", user.uid);
-                document.getElementById('auth-error').textContent = 'המשתמש שלך אינו מורשה להשתמש במערכת. אנא פנה למנהל המערכת.';
-                document.getElementById('auth-error').style.display = 'block';
-
-                // ניתוק המשתמש
-                auth.signOut()
-                  .then(() => {
-                    console.log("Unauthorized user signed out");
-                  })
-                  .catch(signOutError => {
-                    console.error("Error signing out unauthorized user:", signOutError);
-                  });
-              }
-              hideLoader();
-            })
-            .catch(error => {
-              console.error("Error checking authorization:", error);
+              console.error("Error checking user status:", error);
               document.getElementById('auth-error').textContent = 'שגיאה בבדיקת הרשאות: ' + error.message;
               document.getElementById('auth-error').style.display = 'block';
 
               // ניתוק המשתמש במקרה של שגיאה
-              auth.signOut()
-                .then(() => {
-                  console.log("User signed out due to error");
-                })
-                .catch(signOutError => {
-                  console.error("Error signing out user:", signOutError);
-                });
-              hideLoader();
+              auth.signOut();
             });
         }
       } else {
@@ -1641,30 +1638,26 @@
 
     // פונקציה לעדכון תפריט המשתמש בהתאם לסוג המשתמש
     function updateUserMenuForAdmin() {
-      if (currentUser && currentUser.isAdmin) {
-        // הוסף פריט תפריט לניהול משתמשים
-        const userMenu = document.querySelector('.user-menu-dropdown');
-        if (userMenu) {
-          // בדוק אם כבר קיים פריט התפריט
-          if (!userMenu.querySelector('.admin-menu-item')) {
-            const adminMenuItem = document.createElement('a');
-            adminMenuItem.href = '#';
-            adminMenuItem.className = 'user-menu-item admin-menu-item';
-            adminMenuItem.textContent = 'ניהול משתמשים';
-            adminMenuItem.addEventListener('click', showUserManagementModal);
+    if (currentUser && currentUser.isAdmin) {
+      const userMenu = document.querySelector('.user-menu-dropdown');
+      if (userMenu) {
+        // הוסף ניהול בקשות הרשמה
+        const pendingRequestsItem = document.createElement('a');
+        pendingRequestsItem.href = '#';
+        pendingRequestsItem.className = 'user-menu-item admin-menu-item';
+        pendingRequestsItem.textContent = 'בקשות הרשמה ממתינות';
+        pendingRequestsItem.addEventListener('click', showPendingRegistrationsModal);
 
-            // הוסף לתפריט לפני פריט ההתנתקות
-            const logoutItem = userMenu.querySelector('#logout-btn');
-            if (logoutItem) {
-              userMenu.insertBefore(adminMenuItem, logoutItem);
-            } else {
-              userMenu.appendChild(adminMenuItem);
-            }
-          }
+        // הוסף לתפריט לפני פריט ההתנתקות
+        const logoutItem = userMenu.querySelector('#logout-btn');
+        if (logoutItem) {
+          userMenu.insertBefore(pendingRequestsItem, logoutItem);
+        } else {
+          userMenu.appendChild(pendingRequestsItem);
         }
       }
     }
-
+  }
     // מודל ניהול משתמשים
     function showUserManagementModal() {
       // בדוק הרשאות מנהל
@@ -1741,7 +1734,131 @@
           authorizedUsersList.innerHTML = '<div style="color: var(--danger);">שגיאה בטעינת משתמשים: ' + error.message + '</div>';
         });
     }
+    function showPendingRegistrationsModal() {
+      // בדוק הרשאות מנהל
+      if (!currentUser || !currentUser.isAdmin) {
+        alert('רק למנהל המערכת יש הרשאה לניהול בקשות הרשמה');
+        return;
+      }
 
+      // הצג את המודל
+      document.getElementById('pending-registrations-modal').style.display = 'block';
+
+      // טען את רשימת בקשות ההרשמה הממתינות
+      loadPendingRegistrations();
+    }
+
+    function loadPendingRegistrations() {
+      const pendingList = document.getElementById('pending-registrations-list');
+      pendingList.innerHTML = 'טוען בקשות הרשמה...';
+
+      db.collection('users')
+        .where('status', '==', 'pending')
+        .get()
+        .then(snapshot => {
+          if (snapshot.empty) {
+            pendingList.innerHTML = '<div>אין בקשות הרשמה ממתינות.</div>';
+            return;
+          }
+
+          let pendingHTML = '';
+
+          snapshot.forEach(doc => {
+            const userData = doc.data();
+
+            pendingHTML += `
+              <div class="user-management-item">
+                <div>
+                  <strong>${userData.email}</strong>
+                  <div style="font-size: 12px; color: #666;">
+                    נרשם: ${userData.createdAt ? new Date(userData.createdAt.toDate()).toLocaleString() : 'לא ידוע'}
+                  </div>
+                </div>
+                <div>
+                  <button class="btn btn-sm btn-success approve-user-btn" data-id="${doc.id}" data-email="${userData.email}">
+                    <i class="fas fa-check"></i> אשר
+                  </button>
+                  <button class="btn btn-sm btn-danger reject-user-btn" data-id="${doc.id}" data-email="${userData.email}">
+                    <i class="fas fa-times"></i> דחה
+                  </button>
+                </div>
+              </div>
+            `;
+          });
+
+          pendingList.innerHTML = pendingHTML;
+
+          // הוסף מאזינים לכפתורים
+          pendingList.querySelectorAll('.approve-user-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+              const userId = this.getAttribute('data-id');
+              const userEmail = this.getAttribute('data-email');
+              approveUserRegistration(userId, userEmail);
+            });
+          });
+
+          pendingList.querySelectorAll('.reject-user-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+              const userId = this.getAttribute('data-id');
+              const userEmail = this.getAttribute('data-email');
+              rejectUserRegistration(userId, userEmail);
+            });
+          });
+        })
+        .catch(error => {
+          console.error("Error loading pending registrations:", error);
+          pendingList.innerHTML = '<div style="color: var(--danger);">שגיאה בטעינת בקשות הרשמה: ' + error.message + '</div>';
+        });
+    }
+
+    function approveUserRegistration(userId, userEmail) {
+      if (confirm(`האם אתה בטוח שברצונך לאשר את המשתמש ${userEmail}?`)) {
+        showLoader();
+
+        db.collection('users').doc(userId).update({
+          status: 'approved',
+          approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          approvedBy: currentUser.uid
+        })
+        .then(() => {
+          hideLoader();
+          alert(`המשתמש ${userEmail} אושר בהצלחה`);
+          loadPendingRegistrations(); // רענון הרשימה
+        })
+        .catch(error => {
+          hideLoader();
+          console.error("Error approving user:", error);
+          alert('שגיאה באישור המשתמש: ' + error.message);
+        });
+      }
+    }
+
+    function rejectUserRegistration(userId, userEmail) {
+      if (confirm(`האם אתה בטוח שברצונך לדחות את המשתמש ${userEmail}?`)) {
+        showLoader();
+
+        db.collection('users').doc(userId).update({
+          status: 'rejected',
+          rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          rejectedBy: currentUser.uid
+        })
+        .then(() => {
+          hideLoader();
+          alert(`המשתמש ${userEmail} נדחה`);
+          loadPendingRegistrations(); // רענון הרשימה
+        })
+        .catch(error => {
+          hideLoader();
+          console.error("Error rejecting user:", error);
+          alert('שגיאה בדחיית המשתמש: ' + error.message);
+        });
+      }
+    }
+
+    // הוסף מאזין לכפתור הסגירה
+    document.getElementById('close-registrations-btn').addEventListener('click', function() {
+      document.getElementById('pending-registrations-modal').style.display = 'none';
+    });
     // פונקציה להוספת משתמש מורשה לפי אימייל
     function addAuthorizedUserByEmail(email) {
       if (!currentUser || !currentUser.isAdmin) {
@@ -1850,88 +1967,59 @@
       }
 
       function register() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
 
-        if (!email || !password) {
-          showAuthError('אנא הזן אימייל וסיסמה');
-          return;
-        }
+    if (!email || !password) {
+      showAuthError('אנא הזן אימייל וסיסמה');
+      return;
+    }
 
-        if (password.length < 6) {
-          showAuthError('הסיסמה חייבת להכיל לפחות 6 תווים');
-          return;
-        }
+    if (password.length < 6) {
+      showAuthError('הסיסמה חייבת להכיל לפחות 6 תווים');
+      return;
+    }
 
-        showLoader();
+    showLoader();
 
-        // בדוק אם האימייל מורשה לפני הרישום (או אם זה המנהל)
-      if (email === adminEmail) {
-          // זהו המנהל - אפשר לו להירשם ישירות
-          auth.createUserWithEmailAndPassword(email, password)
-            .catch(error => {
-              hideLoader();
-              console.error("Registration error:", error);
-              showAuthError('שגיאה בהרשמה: ' + error.message);
-            });
-        } else {
-          // בדוק אם המשתמש כבר הוגדר כמורשה
-          db.collection('authorized_users')
-            .where('email', '==', email)
-            .limit(1)
-            .get()
-            .then(snapshot => {
-              if (snapshot.empty) {
-                hideLoader();
-                showAuthError('האימייל שהזנת לא נמצא ברשימת המשתמשים המורשים. אנא פנה למנהל המערכת.');
-                return Promise.reject("Unauthorized email");
-              }
+    // בדיקה אם האימייל הוא המנהל
+    if (email === adminEmail) {
+      // זהו המנהל - אפשר לו להירשם ישירות
+      auth.createUserWithEmailAndPassword(email, password)
+        .catch(error => {
+          hideLoader();
+          console.error("Registration error:", error);
+          showAuthError('שגיאה בהרשמה: ' + error.message);
+        });
+      return;
+    }
 
-              // האימייל מורשה - המשך עם הרישום
-              return auth.createUserWithEmailAndPassword(email, password);
-            })
-            .then(userCredential => {
-              const user = userCredential.user;
+    // רישום משתמש רגיל עם סטטוס "ממתין לאישור"
+    auth.createUserWithEmailAndPassword(email, password)
+      .then(userCredential => {
+        const user = userCredential.user;
 
-              // עדכן את טבלת המשתמשים המורשים עם ה-UID האמיתי
-              return db.collection('authorized_users')
-                .where('email', '==', email)
-                .limit(1)
-                .get()
-                .then(snapshot => {
-                  if (!snapshot.empty) {
-                    const doc = snapshot.docs[0];
-                    const tempId = doc.id;
-                    const userData = doc.data();
-
-                    // בדוק אם צריך לעדכן את ה-UID
-                    if (tempId.startsWith('temp_')) {
-                      // מחיקת הרשומה הזמנית
-                      return db.collection('authorized_users').doc(tempId).delete()
-                        .then(() => {
-                          // יצירת רשומה חדשה עם ה-UID האמיתי
-                          return db.collection('authorized_users').doc(user.uid).set({
-                            isAuthorized: true,
-                            email: email,
-                            authorizedBy: userData.authorizedBy,
-                            authorizedAt: userData.authorizedAt,
-                            registeredAt: firebase.firestore.FieldValue.serverTimestamp()
-                          });
-                        });
-                    }
-                  }
-                  return Promise.resolve();
-                });
-            })
-            .catch(error => {
-              hideLoader();
-              if (error === "Unauthorized email") return;  // כבר הצגנו שגיאה
-
-              console.error("Registration error:", error);
-              showAuthError('שגיאה בהרשמה: ' + error.message);
-            });
-        }
-      }
+        // שמירת המידע על המשתמש עם סטטוס "ממתין לאישור"
+        return db.collection('users').doc(user.uid).set({
+          userId: user.uid,
+          email: email,
+          displayName: email.split('@')[0],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          status: 'pending'  // סטטוס ממתין לאישור
+        });
+      })
+      .then(() => {
+        hideLoader();
+        alert('נרשמת בהצלחה! הבקשה שלך ממתינה לאישור המנהל.');
+        // התנתקות אוטומטית עד לאישור
+        auth.signOut();
+      })
+      .catch(error => {
+        hideLoader();
+        console.error("Registration error:", error);
+        showAuthError('שגיאה בהרשמה: ' + error.message);
+      });
+  }
 
       function logout() {
         showLoader();
