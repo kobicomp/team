@@ -1,0 +1,3863 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>מערכת ניהול פרויקטים</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-light: #4895ef;
+      --secondary: #3f37c9;
+      --success: #0bb5a0;
+      --warning: #ff9e00;
+      --danger: #e63946;
+      --info: #4cc9f0;
+      --dark: #2b2d42;
+      --light: #f8f9fa;
+      --gray: #adb5bd;
+      --white: #ffffff;
+      --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Rubik', Arial, sans-serif;
+      direction: rtl;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f2f5;
+      color: var(--dark);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .card {
+      background-color: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.2);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      color: var(--dark);
+      margin-top: 0;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: var(--radius);
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+    }
+
+    .btn {
+      display: inline-block;
+      background-color: var(--primary);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius);
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .btn:hover {
+      background-color: var(--secondary);
+      transform: translateY(-2px);
+    }
+
+    .btn-lg {
+      padding: 12px 20px;
+      font-size: 16px;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .btn-success {
+      background-color: var(--success);
+    }
+
+    .btn-success:hover {
+      background-color: #099a88;
+    }
+
+    .btn-danger {
+      background-color: var(--danger);
+    }
+
+    .btn-danger:hover {
+      background-color: #d32f3d;
+    }
+
+    .btn-warning {
+      background-color: var(--warning);
+      color: var(--dark);
+    }
+
+    .btn-warning:hover {
+      background-color: #e68a00;
+    }
+
+    .btn-info {
+      background-color: var(--info);
+    }
+
+    .btn-info:hover {
+      background-color: #3ab7de;
+    }
+
+    .btn-outline {
+      background-color: transparent;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--primary);
+      color: var(--white);
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: var(--dark);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      margin: -10px;
+    }
+
+    .col {
+      flex: 1;
+      padding: 10px;
+    }
+
+    .project-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .project-card {
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+      border-right: 5px solid var(--primary);
+      height: 100%;
+    }
+
+    .project-card-content {
+      padding: 15px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .project-card-title {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 18px;
+      color: var(--dark);
+    }
+
+    .project-card-description {
+      color: #6c757d;
+      margin-bottom: 10px;
+      flex-grow: 1;
+    }
+
+    .project-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: auto;
+    }
+
+    .project-type-indicator {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .personal-project {
+      background-color: #d5f5e3;
+      color: #27ae60;
+    }
+
+    .team-project {
+      background-color: #d4e6f1;
+      color: #2980b9;
+    }
+
+    .member-list {
+      margin-top: 20px;
+    }
+
+    .member-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      transition: all 0.3s;
+    }
+
+    .member-item:hover {
+      background-color: #e9ecef;
+    }
+
+    .task-list {
+      margin-top: 20px;
+    }
+
+    .task-item {
+      display: flex;
+      padding: 12px;
+      background-color: var(--light);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      align-items: center;
+      transition: all 0.3s;
+    }
+
+    .task-item:hover {
+      box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
+    }
+
+    .task-item.completed {
+      background-color: #e8f5e9;
+      border-right: 3px solid var(--success);
+    }
+
+    .task-content {
+      flex-grow: 1;
+      margin: 0 15px;
+    }
+
+    .task-title {
+      margin: 0 0 5px 0;
+      font-weight: 500;
+      color: var(--dark);
+    }
+
+    .task-description {
+      color: #6c757d;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+
+    .task-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 5px;
+      font-size: 12px;
+    }
+
+    .task-due-date {
+      color: var(--dark);
+    }
+
+    .task-due-date.overdue {
+      color: var(--danger);
+      font-weight: 500;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 5px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      overflow-y: auto;
+    }
+
+    .modal-content {
+      background-color: var(--white);
+      margin: 10% auto;
+      padding: 30px;
+      border-radius: var(--radius);
+      width: 90%;
+      max-width: 600px;
+      box-shadow: var(--shadow);
+      animation: modalFadeIn 0.3s;
+    }
+
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .modal-close {
+      cursor: pointer;
+      font-size: 24px;
+      color: var(--gray);
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #dee2e6;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .tab {
+      padding: 12px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font-weight: 500;
+      color: var(--gray);
+      transition: all 0.3s;
+    }
+
+    .tab:hover {
+      color: var(--primary);
+    }
+
+    .tab.active {
+      border-bottom: 2px solid var(--primary);
+      color: var(--primary);
+    }
+
+    .auth-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--primary-light) 0%, var(--secondary) 100%);
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 400px;
+      padding: 30px;
+      background-color: var(--white);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .badge-owner {
+      background-color: #fff3e6;
+      color: #ff8c00;
+    }
+
+    .badge-member {
+      background-color: #e6f3ff;
+      color: #0070f3;
+    }
+
+    .tag {
+      display: inline-block;
+      background-color: #e9ecef;
+      color: #495057;
+      padding: 3px 10px;
+      border-radius: 16px;
+      font-size: 12px;
+      margin: 0 5px 5px 0;
+    }
+
+    .tag.high {
+      background-color: #f8d7da;
+      color: #dc3545;
+    }
+
+    .tag.medium {
+      background-color: #fff3cd;
+      color: #ffc107;
+    }
+
+    .tag.low {
+      background-color: #d1e7dd;
+      color: #198754;
+    }
+
+    .tag-blue {
+      background-color: #cfe2ff;
+      color: #0d6efd;
+    }
+
+    .tag-green {
+      background-color: #d1e7dd;
+      color: #198754;
+    }
+
+    .tag-red {
+      background-color: #f8d7da;
+      color: #dc3545;
+    }
+
+    .tag-yellow {
+      background-color: #fff3cd;
+      color: #ffc107;
+    }
+
+    .tag-purple {
+      background-color: #e2d9f3;
+      color: #6f42c1;
+    }
+
+    .tag-cyan {
+      background-color: #d7f5fc;
+      color: #17a2b8;
+    }
+
+    .help-request {
+      background-color: #ffedd1;
+      border-right: 3px solid var(--warning);
+    }
+
+    .tags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 10px;
+    }
+
+    .tags-input {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: var(--radius);
+      margin-bottom: 15px;
+    }
+
+    .tag-item {
+      display: flex;
+      align-items: center;
+      background-color: #e9ecef;
+      padding: 3px 8px;
+      border-radius: 16px;
+      font-size: 12px;
+    }
+
+    .tag-close {
+      margin-right: 5px;
+      cursor: pointer;
+    }
+
+    .tag-input {
+      flex-grow: 1;
+      border: none;
+      outline: none;
+      padding: 5px;
+      margin-bottom: 0;
+    }
+
+    /* Loader */
+    .loader-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+
+    .loader {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(67, 97, 238, 0.2);
+      border-radius: 50%;
+      border-top: 5px solid var(--primary);
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Dashboard styles */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .dashboard-filter {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .dashboard-filter select, .dashboard-filter input {
+      margin-bottom: 0;
+    }
+
+    .dashboard-section {
+      margin-bottom: 30px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .help-tasks-container {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #fff8e1;
+      border-radius: var(--radius);
+      border-right: 4px solid var(--warning);
+    }
+
+    .navbar {
+      background-color: var(--white);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 15px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .navbar-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .navbar-brand {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .navbar-nav {
+      display: flex;
+      align-items: center;
+    }
+
+    .nav-item {
+      margin-right: 20px;
+    }
+
+    .nav-link {
+      color: var(--dark);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+
+    .nav-link:hover {
+      color: var(--primary);
+    }
+
+    .nav-link.active {
+      color: var(--primary);
+    }
+
+    .user-menu {
+      position: relative;
+      cursor: pointer;
+    }
+
+    .user-menu-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: var(--primary);
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    .user-menu-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background-color: var(--white);
+      border-radius: var(--radius);
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+      padding: 10px 0;
+      min-width: 200px;
+      z-index: 1000;
+      display: none;
+    }
+
+    .user-menu-dropdown.show {
+      display: block;
+    }
+
+    .user-menu-item {
+      padding: 8px 15px;
+      display: block;
+      text-decoration: none;
+      color: var(--dark);
+      transition: background-color 0.3s;
+    }
+
+    .user-menu-item:hover {
+      background-color: #f8f9fa;
+    }
+
+    .user-menu-item.logout {
+      color: var(--danger);
+    }
+
+    /* חדש - תמיכה בסידור המשימות */
+    .task-sort {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .task-sort select {
+      margin-bottom: 0;
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      .project-list {
+        grid-template-columns: 1fr;
+      }
+
+      .row {
+        flex-direction: column;
+      }
+
+      .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .dashboard-header .btn {
+        margin-top: 10px;
+        width: 100%;
+      }
+
+      .dashboard-filter {
+        flex-direction: column;
+      }
+    }
+
+    /* סגנונות חדשים למצבי משימות */
+    .task-status {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-left: 5px;
+    }
+
+    .status-not-started {
+      background-color: #e9ecef;
+      color: #495057;
+    }
+
+    .status-in-progress {
+      background-color: #cfe2ff;
+      color: #0d6efd;
+    }
+
+    .status-completed {
+      background-color: #d1e7dd;
+      color: #198754;
+    }
+
+    .status-waiting {
+      background-color: #fff3cd;
+      color: #ffc107;
+    }
+
+    .status-blocked {
+      background-color: #f8d7da;
+      color: #dc3545;
+    }
+
+    /* סגנונות נוספים לתצוגת אחראי משימה */
+    .assignee-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background-color: var(--primary);
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-left: 5px;
+      font-size: 12px;
+    }
+
+    .tasks-by-assignee {
+      margin-top: 20px;
+    }
+
+    .assignee-tasks-container {
+      margin-bottom: 20px;
+    }
+
+    .assignee-header {
+      display: flex;
+      align-items: center;
+      background-color: #f8f9fa;
+      padding: 10px;
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+    }
+
+    .unassigned-tasks-section {
+      margin-top: 20px;
+      border: 1px dashed #ccc;
+      padding: 15px;
+      border-radius: var(--radius);
+      background-color: #fafafa;
+    }
+
+    .assignee-filter {
+      margin-bottom: 15px;
+    }
+
+    /* ניהול משתמשים */
+    .user-management-list {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      border-radius: var(--radius);
+      margin-top: 15px;
+    }
+
+    .user-management-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .user-management-item:last-child {
+      border-bottom: none;
+    }
+
+    .user-management-item .badge {
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- לוודר לטעינה -->
+  <div id="loader" class="loader-container">
+    <div class="loader"></div>
+  </div>
+
+  <!-- אזור התחברות -->
+  <div id="auth-section" class="auth-container hidden">
+    <div class="auth-card">
+      <h1 style="text-align: center; margin-bottom: 20px; color: var(--primary);">מערכת ניהול פרויקטים</h1>
+      <div id="auth-error" style="color: var(--danger); margin-bottom: 15px; display: none; padding: 10px; background-color: #f8d7da; border-radius: 4px;"></div>
+
+      <div class="form-group">
+        <label for="email">אימייל:</label>
+        <input type="email" id="email" placeholder="הכנס אימייל">
+      </div>
+
+      <div class="form-group">
+        <label for="password">סיסמה:</label>
+        <input type="password" id="password" placeholder="הכנס סיסמה">
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button id="login-btn" class="btn btn-lg" style="flex: 1;">התחברות</button>
+        <button id="register-btn" class="btn btn-success btn-lg" style="flex: 1;">הרשמה</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- אזור האפליקציה -->
+  <div id="app-section" class="hidden">
+    <!-- סרגל ניווט -->
+    <div class="navbar">
+      <div class="navbar-container">
+        <a href="#" class="navbar-brand">ניהול פרויקטים</a>
+        <div class="navbar-nav">
+          <div class="nav-item">
+            <a href="#" id="nav-projects" class="nav-link active">פרויקטים</a>
+          </div>
+          <div class="nav-item">
+            <a href="#" id="nav-dashboard" class="nav-link">המשימות שלי</a>
+          </div>
+          <div class="user-menu">
+            <div class="user-menu-toggle">
+              <div class="user-avatar" id="user-avatar"></div>
+              <span id="user-email"></span>
+              <i class="fas fa-angle-down"></i>
+            </div>
+            <div class="user-menu-dropdown">
+              <a href="#" class="user-menu-item">הפרופיל שלי</a>
+              <a href="#" class="user-menu-item">הגדרות</a>
+              <a href="#" id="logout-btn" class="user-menu-item logout">התנתק</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <!-- תצוגת רשימת פרויקטים -->
+      <div id="projects-view">
+        <div class="dashboard-header">
+          <h2>הפרויקטים שלי</h2>
+          <button id="add-project-btn" class="btn btn-success">
+            <i class="fas fa-plus"></i> פרויקט חדש
+          </button>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" data-filter="all">כל הפרויקטים</div>
+          <div class="tab" data-filter="personal">פרויקטים אישיים</div>
+          <div class="tab" data-filter="team">פרויקטים צוותיים</div>
+        </div>
+
+        <div id="projects-list" class="project-list">
+          <!-- פרויקטים יוצגו כאן -->
+          <div>טוען פרויקטים...</div>
+        </div>
+      </div>
+
+      <!-- תצוגת דשבורד המשימות -->
+      <div id="dashboard-view" class="hidden">
+        <div class="dashboard-header">
+          <h2>המשימות שלי</h2>
+        </div>
+
+        <div class="dashboard-filter">
+          <select id="dashboard-filter-project" class="form-control">
+            <option value="all">כל הפרויקטים</option>
+            <!-- אפשרויות יתווספו דינמית -->
+          </select>
+          <select id="dashboard-sort-by" class="form-control">
+            <option value="deadline">מיון לפי תאריך</option>
+            <option value="name">מיון לפי שם</option>
+            <option value="project">מיון לפי פרויקט</option>
+            <option value="status">מיון לפי סטטוס</option>
+          </select>
+          <select id="dashboard-filter-tag" class="form-control">
+            <option value="all">כל התגיות</option>
+            <!-- תגיות יתווספו דינמית -->
+          </select>
+          <select id="dashboard-filter-status" class="form-control">
+            <option value="all">כל הסטטוסים</option>
+            <option value="not-started">טרם התחילה</option>
+            <option value="in-progress">בתהליך</option>
+            <option value="waiting">ממתינה</option>
+            <option value="blocked">תקועה</option>
+            <option value="completed">הושלמה</option>
+          </select>
+        </div>
+
+        <div class="dashboard-section">
+          <div class="section-header">
+            <h3 class="section-title">משימות לביצוע</h3>
+          </div>
+          <div id="dashboard-tasks" class="task-list">
+            <!-- המשימות יוצגו כאן -->
+          </div>
+        </div>
+
+        <div class="dashboard-section">
+          <div class="section-header">
+            <h3 class="section-title">משימות שהושלמו</h3>
+          </div>
+          <div id="dashboard-completed-tasks" class="task-list">
+            <!-- המשימות שהושלמו יוצגו כאן -->
+          </div>
+        </div>
+
+        <div class="dashboard-section">
+          <div class="section-header">
+            <h3 class="section-title">
+              בקשות עזרה צוותית
+              <span class="badge" style="background-color: var(--warning); color: white;"><i class="fas fa-hands-helping"></i></span>
+            </h3>
+          </div>
+          <div id="dashboard-help-tasks" class="task-list">
+            <!-- בקשות העזרה יוצגו כאן -->
+          </div>
+        </div>
+      </div>
+
+      <!-- תצוגת פרויקט ספציפי -->
+      <div id="project-detail-view" class="hidden">
+        <div class="card">
+          <button id="back-to-projects" class="btn">
+            <i class="fas fa-arrow-right"></i> חזרה לרשימת הפרויקטים
+          </button>
+
+          <div id="project-detail" style="margin-top: 20px;">
+            <!-- פרטי הפרויקט יוצגו כאן -->
+          </div>
+
+          <!-- חברי צוות לפרויקט צוותי -->
+          <div id="team-members-section" class="hidden" style="margin-top: 20px;">
+            <div class="section-header">
+              <h3 class="section-title">חברי צוות</h3>
+              <button id="add-member-btn" class="btn btn-success">
+                <i class="fas fa-user-plus"></i> הוסף חבר צוות
+              </button>
+            </div>
+            <div id="team-members-list" class="member-list">
+              <!-- חברי צוות יוצגו כאן -->
+            </div>
+          </div>
+
+          <div style="margin-top: 20px;">
+            <div class="section-header">
+              <h3 class="section-title">משימות</h3>
+              <div>
+                <button id="add-task-btn" class="btn">
+                  <i class="fas fa-plus"></i> הוסף משימה
+                </button>
+                <button id="add-help-request-btn" class="btn btn-warning">
+                  <i class="fas fa-hands-helping"></i> בקשת עזרה
+                </button>
+              </div>
+            </div>
+
+            <div class="task-sort">
+              <select id="task-sort-by" class="form-control">
+                <option value="createdAt-desc">חדש לישן</option>
+                <option value="createdAt-asc">ישן לחדש</option>
+                <option value="deadline-asc">תאריך הקרוב ביותר</option>
+                <option value="name-asc">לפי שם (א-ת)</option>
+                <option value="status-asc">לפי סטטוס</option>
+              </select>
+              <select id="task-filter-tag" class="form-control">
+                <option value="all">כל התגיות</option>
+                <!-- תגיות יתווספו דינמית -->
+              </select>
+              <select id="task-filter-status" class="form-control">
+                <option value="all">כל הסטטוסים</option>
+                <option value="not-started">טרם התחילה</option>
+                <option value="in-progress">בתהליך</option>
+                <option value="waiting">ממתינה</option>
+                <option value="blocked">תקועה</option>
+                <option value="completed">הושלמה</option>
+              </select>
+              <!-- פילטר לפי אחראי - רק לפרויקטים צוותיים -->
+              <select id="task-filter-assignee" class="form-control hidden">
+                <option value="all">כל האחראים</option>
+                <option value="none">ללא אחראי</option>
+                <!-- אפשרויות יתווספו דינמית -->
+              </select>
+            </div>
+
+            <!-- תצוגת טאבים לפרויקט צוותי -->
+            <div class="tabs hidden" id="task-view-tabs">
+              <div class="tab active" data-view="list">תצוגת רשימה</div>
+              <div class="tab" data-view="assignee">לפי אחראי</div>
+            </div>
+
+            <!-- תצוגת רשימת משימות -->
+            <div id="tasks-list-view">
+              <div id="tasks-list" class="task-list">
+                <!-- משימות יוצגו כאן -->
+              </div>
+            </div>
+
+            <!-- תצוגת משימות לפי אחראי -->
+            <div id="tasks-by-assignee-view" class="hidden">
+              <!-- משימות ללא אחראי - למעלה -->
+              <div class="unassigned-tasks-section">
+                <div class="section-header">
+                  <h3 class="section-title">משימות ללא אחראי</h3>
+                </div>
+                <div id="unassigned-tasks-list" class="task-list">
+                  <!-- משימות ללא אחראי יוצגו כאן -->
+                </div>
+              </div>
+
+              <!-- משימות לפי אחראי -->
+              <div id="tasks-by-assignee" class="tasks-by-assignee">
+                <!-- משימות לפי אחראי יוצגו כאן -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל פרויקט -->
+  <div id="project-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="project-modal-title" class="modal-title">פרויקט חדש</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div class="form-group">
+        <label for="project-name">שם הפרויקט:</label>
+        <input type="text" id="project-name" placeholder="הזן שם לפרויקט">
+      </div>
+
+      <div class="form-group">
+        <label for="project-description">תיאור הפרויקט:</label>
+        <textarea id="project-description" placeholder="הזן תיאור לפרויקט" rows="4"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="project-deadline">תאריך יעד:</label>
+        <input type="date" id="project-deadline">
+      </div>
+
+      <div class="form-group">
+        <label for="project-type">סוג פרויקט:</label>
+        <select id="project-type">
+          <option value="personal">פרויקט אישי</option>
+          <option value="team">פרויקט צוותי</option>
+        </select>
+      </div>
+
+      <input type="hidden" id="project-id">
+
+      <div class="modal-footer">
+        <button id="save-project-btn" class="btn btn-success">שמור</button>
+        <button id="cancel-project-btn" class="btn btn-outline">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל חבר צוות -->
+  <div id="team-member-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">הוספת חבר צוות לפרויקט</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div class="form-group">
+        <label for="member-email">אימייל:</label>
+        <input type="email" id="member-email" placeholder="הזן אימייל של חבר צוות">
+      </div>
+
+      <div id="member-search-results"></div>
+
+      <div class="modal-footer">
+        <button id="add-member-confirm-btn" class="btn btn-success" disabled>הוסף לפרויקט</button>
+        <button id="cancel-member-btn" class="btn btn-outline">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל משימה -->
+  <div id="task-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="task-modal-title" class="modal-title">משימה חדשה</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div class="form-group">
+        <label for="task-name">שם המשימה:</label>
+        <input type="text" id="task-name" placeholder="הזן שם למשימה">
+      </div>
+
+      <div class="form-group">
+        <label for="task-description">תיאור המשימה:</label>
+        <textarea id="task-description" placeholder="הזן תיאור למשימה" rows="4"></textarea>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <div class="form-group">
+            <label for="task-deadline">תאריך יעד:</label>
+            <input type="date" id="task-deadline">
+          </div>
+        </div>
+        <div class="col">
+          <div class="form-group">
+            <label for="task-status">סטטוס:</label>
+            <select id="task-status">
+              <option value="not-started">טרם התחילה</option>
+              <option value="in-progress">בתהליך</option>
+              <option value="waiting">ממתינה לאירוע/תאריך</option>
+              <option value="blocked">תקועה</option>
+              <option value="completed">הושלמה</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" id="task-blocked-reason-container" style="display: none;">
+        <label for="task-blocked-reason">סיבת העיכוב:</label>
+        <input type="text" id="task-blocked-reason" placeholder="הסבר מדוע המשימה תקועה">
+      </div>
+
+      <div class="form-group" id="task-waiting-for-container" style="display: none;">
+        <label for="task-waiting-for">ממתינה ל:</label>
+        <input type="text" id="task-waiting-for" placeholder="תאריך או אירוע שאליו המשימה ממתינה">
+      </div>
+
+      <div class="form-group" id="task-tags-container">
+        <label for="task-tags">תגיות:</label>
+        <div class="tags-input">
+          <div id="task-tags-items"></div>
+          <input type="text" id="task-tag-input" class="tag-input" placeholder="הוסף תגית ולחץ Enter">
+        </div>
+      </div>
+
+      <div id="task-assignee-section" class="form-group hidden">
+        <label for="task-assignee">שייך ל:</label>
+        <select id="task-assignee">
+          <option value="">לא משויך</option>
+          <!-- אפשרויות חברי צוות יתווספו דינמית -->
+        </select>
+      </div>
+
+      <div id="task-help-section" class="form-group hidden">
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="task-help-request">
+            בקשת עזרה צוותית
+          </label>
+        </div>
+      </div>
+
+      <input type="hidden" id="task-id">
+      <input type="hidden" id="task-project-id">
+      <input type="hidden" id="task-tags-hidden">
+
+      <div class="modal-footer">
+        <button id="save-task-btn" class="btn btn-success">שמור</button>
+        <button id="cancel-task-btn" class="btn btn-outline">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל ניהול משתמשים -->
+  <div id="user-management-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">ניהול משתמשים</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div class="form-group">
+        <h4>הוספת משתמש מורשה</h4>
+        <label for="authorized-email">אימייל:</label>
+        <input type="email" id="authorized-email" placeholder="הזן אימייל של משתמש">
+        <button id="add-authorized-btn" class="btn btn-success">הוסף משתמש מורשה</button>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <h4>רשימת משתמשים מורשים</h4>
+        <div id="authorized-users-list" class="user-management-list">
+          <div>טוען משתמשים...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ספריות Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-firestore-compat.js"></script>
+
+  <script>
+    // תצורת Firebase
+    // משתנים גלובליים
+  let auth;
+  let db;
+
+  // פונקציה לטעינת תצורת Firebase מהשרת
+  function initializeFirebase() {
+    showLoader(); // הצג לוודר בזמן טעינה
+
+    fetch('/api/firebase-config')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('בעיה בטעינת תצורת Firebase: ' + response.status);
+        }
+        return response.json();
+      })
+      .then(firebaseConfig => {
+        console.log('תצורת Firebase נטענה בהצלחה');
+
+        // אתחול Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // קיצורי דרך לשירותים
+        auth = firebase.auth();
+        db = firebase.firestore();
+
+        // מעקב אחר התחברות המשתמש נשאר כפי שהיה
+        startAuthListener();
+      })
+      .catch(error => {
+        console.error('שגיאה בטעינת תצורת Firebase:', error);
+        document.getElementById('auth-error').textContent = 'שגיאה בטעינת הגדרות האפליקציה: ' + error.message;
+        document.getElementById('auth-error').style.display = 'block';
+        hideLoader();
+      });
+  }
+
+  // פונקציה למעקב אחר מצב התחברות המשתמש
+  function startAuthListener() {
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        // המשתמש מחובר - נבדוק אם הוא מורשה
+        showLoader();
+
+        // אם זה המנהל, אפשר לו גישה ישירה
+        if (user.email === "thekobino@gmail.com") {
+          // המשתמש הוא המנהל
+          currentUser = {
+            uid: user.uid,
+            email: user.email,
+            isAdmin: true
+          };
+
+          // עדכון ממשק המשתמש
+          document.getElementById('auth-section').classList.add('hidden');
+          document.getElementById('app-section').classList.remove('hidden');
+          document.getElementById('user-email').textContent = user.email;
+          document.getElementById('user-avatar').textContent = user.email.charAt(0).toUpperCase();
+
+          // עדכון תפריט למנהל
+          updateUserMenuForAdmin();
+
+          // שמירת המידע על המשתמש אם עוד לא קיים
+          ensureUserIsRegistered(user.email, user.uid);
+
+          // הוסף את המנהל לרשימת המשתמשים המורשים אם עוד לא קיים
+          db.collection('authorized_users').doc(user.uid).get()
+            .then(doc => {
+              if (!doc.exists) {
+                return db.collection('authorized_users').doc(user.uid).set({
+                  isAuthorized: true,
+                  email: user.email,
+                  authorizedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                  isAdmin: true
+                });
+              }
+              return Promise.resolve();
+            })
+            .then(() => {
+              // טעינת הפרויקטים של המשתמש
+              loadProjects();
+              console.log("Admin user logged in");
+              hideLoader();
+            })
+            .catch(error => {
+              console.error("Error setting admin as authorized:", error);
+              hideLoader();
+            });
+        } else {
+          // בדיקה אם המשתמש מוגדר כמורשה
+          db.collection('authorized_users').doc(user.uid).get()
+            .then(doc => {
+              if (doc.exists && doc.data().isAuthorized === true) {
+                // המשתמש מורשה
+                currentUser = {
+                  uid: user.uid,
+                  email: user.email,
+                  isAdmin: false
+                };
+
+                // עדכון ממשק המשתמש
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('app-section').classList.remove('hidden');
+                document.getElementById('user-email').textContent = user.email;
+                document.getElementById('user-avatar').textContent = user.email.charAt(0).toUpperCase();
+
+                // שמירת המידע על המשתמש אם עוד לא קיים
+                ensureUserIsRegistered(user.email, user.uid);
+
+                // טעינת הפרויקטים של המשתמש
+                loadProjects();
+              } else {
+                // המשתמש לא מורשה - ניתוק אוטומטי
+                console.log("User not authorized:", user.uid);
+                document.getElementById('auth-error').textContent = 'המשתמש שלך אינו מורשה להשתמש במערכת. אנא פנה למנהל המערכת.';
+                document.getElementById('auth-error').style.display = 'block';
+
+                // ניתוק המשתמש
+                auth.signOut()
+                  .then(() => {
+                    console.log("Unauthorized user signed out");
+                  })
+                  .catch(signOutError => {
+                    console.error("Error signing out unauthorized user:", signOutError);
+                  });
+              }
+              hideLoader();
+            })
+            .catch(error => {
+              console.error("Error checking authorization:", error);
+              document.getElementById('auth-error').textContent = 'שגיאה בבדיקת הרשאות: ' + error.message;
+              document.getElementById('auth-error').style.display = 'block';
+
+              // ניתוק המשתמש במקרה של שגיאה
+              auth.signOut()
+                .then(() => {
+                  console.log("User signed out due to error");
+                })
+                .catch(signOutError => {
+                  console.error("Error signing out user:", signOutError);
+                });
+              hideLoader();
+            });
+        }
+      } else {
+        // המשתמש לא מחובר
+        currentUser = null;
+        document.getElementById('auth-section').classList.remove('hidden');
+        document.getElementById('app-section').classList.add('hidden');
+        document.getElementById('auth-error').style.display = 'none';
+        hideLoader();
+      }
+    });
+  }
+
+    // משתנים גלובליים
+    let currentUser = null;
+    let currentProjectId = null;
+    let currentProjectData = null;
+    let currentProjectMembers = [];
+    let currentFilter = "all";
+    let allTags = new Set();
+    let allProjects = [];
+    let userDashboardTasks = [];
+    let currentTaskView = "list"; // מצב תצוגת המשימות: "list" או "assignee"
+
+    // מיפוי סטטוסים
+    const statusLabels = {
+      'not-started': 'טרם התחילה',
+      'in-progress': 'בתהליך',
+      'waiting': 'ממתינה',
+      'blocked': 'תקועה',
+      'completed': 'הושלמה'
+    };
+
+    // הסתרת החלקים ב-DOM עד לקבלת סטטוס החיבור של המשתמש
+    document.getElementById('auth-section').classList.add('hidden');
+    document.getElementById('app-section').classList.add('hidden');
+
+    // הצגת והסתרת לוודר
+    function showLoader() {
+      document.getElementById('loader').classList.remove('hidden');
+    }
+
+    function hideLoader() {
+      document.getElementById('loader').classList.add('hidden');
+    }
+
+    // אירועי לחיצה - אימות
+    document.getElementById('login-btn').addEventListener('click', login);
+    document.getElementById('register-btn').addEventListener('click', register);
+    document.getElementById('logout-btn').addEventListener('click', logout);
+
+    // אירועי לחיצה - ניווט
+    document.getElementById('nav-projects').addEventListener('click', function(e) {
+      e.preventDefault();
+      document.getElementById('nav-projects').classList.add('active');
+      document.getElementById('nav-dashboard').classList.remove('active');
+      document.getElementById('projects-view').classList.remove('hidden');
+      document.getElementById('dashboard-view').classList.add('hidden');
+      document.getElementById('project-detail-view').classList.add('hidden');
+    });
+
+    document.getElementById('nav-dashboard').addEventListener('click', function(e) {
+      e.preventDefault();
+      document.getElementById('nav-dashboard').classList.add('active');
+      document.getElementById('nav-projects').classList.remove('active');
+      document.getElementById('projects-view').classList.add('hidden');
+      document.getElementById('dashboard-view').classList.remove('hidden');
+      document.getElementById('project-detail-view').classList.add('hidden');
+      loadDashboard();
+    });
+
+    // Toggle user menu
+    document.querySelector('.user-menu-toggle').addEventListener('click', function() {
+      document.querySelector('.user-menu-dropdown').classList.toggle('show');
+    });
+
+    // Close user menu when clicking outside
+    window.addEventListener('click', function(e) {
+      if (!e.target.closest('.user-menu')) {
+        const dropdown = document.querySelector('.user-menu-dropdown');
+        if (dropdown.classList.contains('show')) {
+          dropdown.classList.remove('show');
+        }
+      }
+    });
+
+    // אירועי לחיצה - פרויקטים
+    document.getElementById('add-project-btn').addEventListener('click', showAddProjectModal);
+    document.getElementById('save-project-btn').addEventListener('click', saveProject);
+    document.getElementById('cancel-project-btn').addEventListener('click', () => {
+      document.getElementById('project-modal').style.display = 'none';
+    });
+
+    // אירועי לחיצה - חברי צוות
+    document.getElementById('add-member-btn').addEventListener('click', showAddMemberModal);
+    document.getElementById('add-member-confirm-btn').addEventListener('click', addMemberToProject);
+    document.getElementById('cancel-member-btn').addEventListener('click', () => {
+      document.getElementById('team-member-modal').style.display = 'none';
+    });
+
+    // אירועי לחיצה - חיפוש חברי צוות לפי הקלדה
+    document.getElementById('member-email').addEventListener('input', searchUserByEmail);
+
+    // אירועי לחיצה - משימות
+    document.getElementById('add-task-btn').addEventListener('click', () => showAddTaskModal(false));
+    document.getElementById('add-help-request-btn').addEventListener('click', () => showAddTaskModal(true));
+    document.getElementById('save-task-btn').addEventListener('click', saveTask);
+    document.getElementById('cancel-task-btn').addEventListener('click', () => {
+      document.getElementById('task-modal').style.display = 'none';
+    });
+
+    // אירוע לתגיות
+    document.getElementById('task-tag-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && this.value.trim() !== '') {
+        e.preventDefault();
+        addTag(this.value.trim());
+        this.value = '';
+      }
+    });
+
+    // אירוע לשינוי סטטוס משימה
+    document.getElementById('task-status').addEventListener('change', function() {
+      const status = this.value;
+      const blockedContainer = document.getElementById('task-blocked-reason-container');
+      const waitingContainer = document.getElementById('task-waiting-for-container');
+
+      // הסתרה/הצגה של השדות המותנים בסטטוס
+      blockedContainer.style.display = (status === 'blocked') ? 'block' : 'none';
+      waitingContainer.style.display = (status === 'waiting') ? 'block' : 'none';
+    });
+
+    // סגירת מודלים בX
+    document.querySelectorAll('.modal-close').forEach(close => {
+      close.addEventListener('click', function() {
+        this.closest('.modal').style.display = 'none';
+      });
+    });
+
+    // אירועי סינון דשבורד
+    document.getElementById('dashboard-filter-project').addEventListener('change', filterDashboardTasks);
+    document.getElementById('dashboard-sort-by').addEventListener('change', filterDashboardTasks);
+    document.getElementById('dashboard-filter-tag').addEventListener('change', filterDashboardTasks);
+    document.getElementById('dashboard-filter-status').addEventListener('change', filterDashboardTasks);
+
+    // אירועי מיון משימות בפרויקט
+    document.getElementById('task-sort-by').addEventListener('change', function() {
+      loadTasks(currentProjectId);
+    });
+
+    document.getElementById('task-filter-tag').addEventListener('change', function() {
+      loadTasks(currentProjectId);
+    });
+
+    document.getElementById('task-filter-status').addEventListener('change', function() {
+      loadTasks(currentProjectId);
+    });
+
+    document.getElementById('task-filter-assignee').addEventListener('change', function() {
+      if (currentTaskView === "list") {
+        loadTasks(currentProjectId);
+      } else {
+        displayTasksByAssignee();
+      }
+    });
+
+    // אירוע חלופות תצוגת משימות (רשימה / לפי אחראי)
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('tab') && e.target.closest('#task-view-tabs')) {
+        // הסרת הסימון מכל הטאבים
+        e.target.closest('#task-view-tabs').querySelectorAll('.tab').forEach(tab => {
+          tab.classList.remove('active');
+        });
+
+        // הוספת סימון לטאב הנוכחי
+        e.target.classList.add('active');
+
+        // שינוי תצוגת המשימות
+        const view = e.target.dataset.view;
+        currentTaskView = view;
+
+        if (view === 'list') {
+          document.getElementById('tasks-list-view').classList.remove('hidden');
+          document.getElementById('tasks-by-assignee-view').classList.add('hidden');
+          loadTasks(currentProjectId);
+        } else if (view === 'assignee') {
+          document.getElementById('tasks-list-view').classList.add('hidden');
+          document.getElementById('tasks-by-assignee-view').classList.remove('hidden');
+          displayTasksByAssignee();
+        }
+      }
+    });
+
+    // אירוע חזרה לרשימת פרויקטים
+    document.getElementById('back-to-projects').addEventListener('click', () => {
+      document.getElementById('projects-view').classList.remove('hidden');
+      document.getElementById('project-detail-view').classList.add('hidden');
+      document.getElementById('nav-projects').classList.add('active');
+      document.getElementById('nav-dashboard').classList.remove('active');
+    });
+
+    // אירועי טאבים לסינון פרויקטים
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        if (e.target.closest('#task-view-tabs')) {
+          // טיפול בטאבים של תצוגת משימות נעשה בנפרד למעלה
+          return;
+        }
+
+        document.querySelectorAll('.tab').forEach(t => {
+          if (!t.closest('#task-view-tabs')) {
+            t.classList.remove('active');
+          }
+        });
+        e.target.classList.add('active');
+        currentFilter = e.target.dataset.filter;
+        loadProjects();
+      });
+    });
+
+    // פונקציה לעדכון תפריט המשתמש בהתאם לסוג המשתמש
+    function updateUserMenuForAdmin() {
+      if (currentUser && currentUser.isAdmin) {
+        // הוסף פריט תפריט לניהול משתמשים
+        const userMenu = document.querySelector('.user-menu-dropdown');
+        if (userMenu) {
+          // בדוק אם כבר קיים פריט התפריט
+          if (!userMenu.querySelector('.admin-menu-item')) {
+            const adminMenuItem = document.createElement('a');
+            adminMenuItem.href = '#';
+            adminMenuItem.className = 'user-menu-item admin-menu-item';
+            adminMenuItem.textContent = 'ניהול משתמשים';
+            adminMenuItem.addEventListener('click', showUserManagementModal);
+
+            // הוסף לתפריט לפני פריט ההתנתקות
+            const logoutItem = userMenu.querySelector('#logout-btn');
+            if (logoutItem) {
+              userMenu.insertBefore(adminMenuItem, logoutItem);
+            } else {
+              userMenu.appendChild(adminMenuItem);
+            }
+          }
+        }
+      }
+    }
+
+    // מודל ניהול משתמשים
+    function showUserManagementModal() {
+      // בדוק הרשאות מנהל
+      if (!currentUser || !currentUser.isAdmin) {
+        alert('רק למנהל המערכת יש הרשאה לניהול משתמשים');
+        return;
+      }
+
+      // יצירת המודל אם עוד לא קיים
+      let userManagementModal = document.getElementById('user-management-modal');
+
+      // הצג את המודל
+      userManagementModal.style.display = 'block';
+
+      // טען את רשימת המשתמשים המורשים
+      loadAuthorizedUsers();
+    }
+
+    // פונקציה לטעינת רשימת המשתמשים המורשים
+    function loadAuthorizedUsers() {
+      const authorizedUsersList = document.getElementById('authorized-users-list');
+
+      if (!authorizedUsersList) return;
+
+      authorizedUsersList.innerHTML = 'טוען משתמשים...';
+
+      db.collection('authorized_users').get()
+        .then(snapshot => {
+          if (snapshot.empty) {
+            authorizedUsersList.innerHTML = '<div>אין משתמשים מורשים ברשימה.</div>';
+            return;
+          }
+
+          let usersHTML = '';
+
+          snapshot.forEach(doc => {
+            const userData = doc.data();
+            const isCurrentAdmin = userData.email === "thekobino@gmail.com";
+
+            usersHTML += `
+              <div class="user-management-item">
+                <div>
+                  <strong>${userData.email}</strong>
+                  <div style="font-size: 12px; color: #666;">
+                    ${isCurrentAdmin ? '<span class="badge" style="background-color: #e6f3ff; color: #0070f3;">מנהל מערכת</span>' : ''}
+                    נוסף: ${userData.authorizedAt ? new Date(userData.authorizedAt.toDate()).toLocaleString() : 'לא ידוע'}
+                  </div>
+                </div>
+                ${!isCurrentAdmin ? `
+                  <button class="btn btn-sm btn-danger remove-user-btn" data-id="${doc.id}" data-email="${userData.email}">
+                    <i class="fas fa-user-times"></i> הסר
+                  </button>
+                ` : ''}
+              </div>
+            `;
+          });
+
+          authorizedUsersList.innerHTML = usersHTML;
+
+          // הוסף מאזינים לכפתורי ההסרה
+          authorizedUsersList.querySelectorAll('.remove-user-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+              const userId = this.getAttribute('data-id');
+              const userEmail = this.getAttribute('data-email');
+
+              if (confirm(`האם אתה בטוח שברצונך להסיר את המשתמש ${userEmail} מרשימת המשתמשים המורשים?`)) {
+                removeAuthorizedUser(userId);
+              }
+            });
+          });
+        })
+        .catch(error => {
+          console.error("Error loading authorized users:", error);
+          authorizedUsersList.innerHTML = '<div style="color: var(--danger);">שגיאה בטעינת משתמשים: ' + error.message + '</div>';
+        });
+    }
+
+    // פונקציה להוספת משתמש מורשה לפי אימייל
+    function addAuthorizedUserByEmail(email) {
+      if (!currentUser || !currentUser.isAdmin) {
+        alert('רק למנהל המערכת יש הרשאה להוסיף משתמשים');
+        return;
+      }
+
+      // בדוק אם כבר קיים משתמש עם האימייל הזה
+      db.collection('authorized_users')
+        .where('email', '==', email)
+        .get()
+        .then(snapshot => {
+          if (!snapshot.empty) {
+            alert('משתמש עם אימייל זה כבר קיים ברשימת המשתמשים המורשים');
+            return;
+          }
+
+          // נסה למצוא את המשתמש לפי אימייל
+          return auth.fetchSignInMethodsForEmail(email)
+            .then(methods => {
+              if (methods.length === 0) {
+                return Promise.reject('משתמש עם אימייל זה לא קיים במערכת. המשתמש צריך להירשם תחילה.');
+              }
+
+              // יצירת ID אקראי עבור המשתמש (זמני - יעודכן בהמשך)
+              const tempUserId = "temp_" + Math.random().toString(36).substring(2, 15);
+
+              // הוספת המשתמש לרשימת המורשים
+              return db.collection('authorized_users').doc(tempUserId).set({
+                isAuthorized: true,
+                email: email,
+                authorizedBy: currentUser.uid,
+                authorizedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                pendingRegistration: true // סימון שזה משתמש שעוד לא התחבר
+              });
+            });
+        })
+        .then(() => {
+          alert(`המשתמש ${email} נוסף בהצלחה לרשימת המשתמשים המורשים`);
+          document.getElementById('authorized-email').value = '';
+          loadAuthorizedUsers(); // טען מחדש את הרשימה
+        })
+        .catch(error => {
+          console.error("Error adding authorized user:", error);
+          alert('שגיאה בהוספת משתמש: ' + error);
+        });
+    }
+
+    // פונקציה להסרת משתמש מורשה
+    function removeAuthorizedUser(userId) {
+      if (!currentUser || !currentUser.isAdmin) {
+        alert('רק למנהל המערכת יש הרשאה להסיר משתמשים');
+        return;
+      }
+
+      db.collection('authorized_users').doc(userId).delete()
+        .then(() => {
+          alert('המשתמש הוסר בהצלחה מרשימת המשתמשים המורשים');
+          loadAuthorizedUsers(); // טען מחדש את הרשימה
+        })
+        .catch(error => {
+          console.error("Error removing authorized user:", error);
+          alert('שגיאה בהסרת משתמש: ' + error.message);
+        });
+    }
+
+    // מעקב אחר מצב התחברות המשתמש
+
+      // וידוא שהמשתמש רשום במערכת
+      function ensureUserIsRegistered(email, uid) {
+        // בדיקה אם המשתמש כבר רשום במערכת
+        db.collection('users').doc(uid).get()
+          .then(doc => {
+            if (!doc.exists) {
+              // הוספת המשתמש למערכת
+              return db.collection('users').doc(uid).set({
+                userId: uid,
+                email: email,
+                displayName: email.split('@')[0], // שם תצוגה ברירת מחדל
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+            }
+          })
+          .catch(error => {
+            console.error("Error checking user:", error);
+          });
+      }
+
+      // פונקציות אימות
+      function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        if (!email || !password) {
+          showAuthError('אנא הזן אימייל וסיסמה');
+          return;
+        }
+
+        showLoader();
+        auth.signInWithEmailAndPassword(email, password)
+          .catch(error => {
+            hideLoader();
+            console.error("Login error:", error);
+            showAuthError('שגיאה בהתחברות: ' + error.message);
+          });
+      }
+
+      function register() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        if (!email || !password) {
+          showAuthError('אנא הזן אימייל וסיסמה');
+          return;
+        }
+
+        if (password.length < 6) {
+          showAuthError('הסיסמה חייבת להכיל לפחות 6 תווים');
+          return;
+        }
+
+        showLoader();
+
+        // בדוק אם האימייל מורשה לפני הרישום (או אם זה המנהל)
+        if (email === "thekobino@gmail.com") {
+          // זהו המנהל - אפשר לו להירשם ישירות
+          auth.createUserWithEmailAndPassword(email, password)
+            .catch(error => {
+              hideLoader();
+              console.error("Registration error:", error);
+              showAuthError('שגיאה בהרשמה: ' + error.message);
+            });
+        } else {
+          // בדוק אם המשתמש כבר הוגדר כמורשה
+          db.collection('authorized_users')
+            .where('email', '==', email)
+            .limit(1)
+            .get()
+            .then(snapshot => {
+              if (snapshot.empty) {
+                hideLoader();
+                showAuthError('האימייל שהזנת לא נמצא ברשימת המשתמשים המורשים. אנא פנה למנהל המערכת.');
+                return Promise.reject("Unauthorized email");
+              }
+
+              // האימייל מורשה - המשך עם הרישום
+              return auth.createUserWithEmailAndPassword(email, password);
+            })
+            .then(userCredential => {
+              const user = userCredential.user;
+
+              // עדכן את טבלת המשתמשים המורשים עם ה-UID האמיתי
+              return db.collection('authorized_users')
+                .where('email', '==', email)
+                .limit(1)
+                .get()
+                .then(snapshot => {
+                  if (!snapshot.empty) {
+                    const doc = snapshot.docs[0];
+                    const tempId = doc.id;
+                    const userData = doc.data();
+
+                    // בדוק אם צריך לעדכן את ה-UID
+                    if (tempId.startsWith('temp_')) {
+                      // מחיקת הרשומה הזמנית
+                      return db.collection('authorized_users').doc(tempId).delete()
+                        .then(() => {
+                          // יצירת רשומה חדשה עם ה-UID האמיתי
+                          return db.collection('authorized_users').doc(user.uid).set({
+                            isAuthorized: true,
+                            email: email,
+                            authorizedBy: userData.authorizedBy,
+                            authorizedAt: userData.authorizedAt,
+                            registeredAt: firebase.firestore.FieldValue.serverTimestamp()
+                          });
+                        });
+                    }
+                  }
+                  return Promise.resolve();
+                });
+            })
+            .catch(error => {
+              hideLoader();
+              if (error === "Unauthorized email") return;  // כבר הצגנו שגיאה
+
+              console.error("Registration error:", error);
+              showAuthError('שגיאה בהרשמה: ' + error.message);
+            });
+        }
+      }
+
+      function logout() {
+        showLoader();
+        auth.signOut()
+          .catch(error => {
+            hideLoader();
+            console.error("Logout error:", error);
+          });
+      }
+
+      function showAuthError(message) {
+        const errorElement = document.getElementById('auth-error');
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+      }
+
+      // פונקציות תגיות
+      function addTag(tagName) {
+        const tagsContainer = document.getElementById('task-tags-items');
+        const existingTags = Array.from(tagsContainer.querySelectorAll('.tag-item')).map(tag =>
+          tag.textContent.replace('×', '').trim()
+        );
+
+        if (existingTags.includes(tagName)) {
+          return; // מניעת כפילויות
+        }
+
+        const tagElement = document.createElement('div');
+        tagElement.className = 'tag-item';
+        tagElement.innerHTML = `
+          ${tagName}
+          <span class="tag-close">×</span>
+        `;
+
+        tagElement.querySelector('.tag-close').addEventListener('click', function() {
+          tagElement.remove();
+          updateTagsHiddenField();
+        });
+
+        tagsContainer.appendChild(tagElement);
+        updateTagsHiddenField();
+      }
+
+      function updateTagsHiddenField() {
+        const tagsContainer = document.getElementById('task-tags-items');
+        const tags = Array.from(tagsContainer.querySelectorAll('.tag-item')).map(tag =>
+          tag.textContent.replace('×', '').trim()
+        );
+
+        document.getElementById('task-tags-hidden').value = JSON.stringify(tags);
+      }
+
+      function loadTagsToInput(tags) {
+        const tagsContainer = document.getElementById('task-tags-items');
+        tagsContainer.innerHTML = '';
+
+        if (tags && tags.length > 0) {
+          tags.forEach(tag => addTag(tag));
+        }
+      }
+
+      // פונקציה להוספת חבר צוות
+      function showAddMemberModal() {
+        document.getElementById('member-email').value = '';
+        document.getElementById('member-search-results').innerHTML = '';
+        document.getElementById('add-member-confirm-btn').disabled = true;
+        document.getElementById('team-member-modal').style.display = 'block';
+      }
+
+      // פונקציות מסך דשבורד
+      function loadDashboard() {
+        showLoader();
+
+        // ראשית טען את כל הפרויקטים עבור הסינון
+        updateProjectsDropdown();
+
+        // טעינת המשימות של המשתמש
+        Promise.all([
+          // משימות שהמשתמש אחראי עליהן
+          db.collection('tasks')
+            .where('assigneeId', '==', currentUser.uid)
+            .get(),
+
+          // משימות בפרויקטים אישיים של המשתמש
+          db.collection('projects')
+            .where('userId', '==', currentUser.uid)
+            .where('type', '==', 'personal')
+            .get()
+            .then(projectsSnapshot => {
+              const projectIds = projectsSnapshot.docs.map(doc => doc.id);
+              if (projectIds.length === 0) return { docs: [] };
+
+              return db.collection('tasks')
+                .where('projectId', 'in', projectIds)
+                .get();
+            }),
+
+          // משימות שהן בקשות עזרה בפרויקטים של המשתמש
+          db.collection('projects')
+            .where('userId', '==', currentUser.uid)
+            .get()
+            .then(projectsSnapshot => {
+              const projectIds = projectsSnapshot.docs.map(doc => doc.id);
+              if (projectIds.length === 0) return { docs: [] };
+
+              return db.collection('tasks')
+                .where('projectId', 'in', projectIds)
+                .where('isHelpRequest', '==', true)
+                .get();
+            }),
+
+          // בקשות עזרה בפרויקטים שהמשתמש חבר בהם
+          db.collection('project_members')
+            .where('userId', '==', currentUser.uid)
+            .get()
+            .then(membershipsSnapshot => {
+              const projectIds = membershipsSnapshot.docs.map(doc => doc.data().projectId);
+              if (projectIds.length === 0) return { docs: [] };
+
+              // Firebase מגביל queries ל-10 ערכים ב-in לכל היותר
+              const projectBatches = [];
+              for (let i = 0; i < projectIds.length; i += 10) {
+                const batch = projectIds.slice(i, i + 10);
+                projectBatches.push(batch);
+              }
+
+              const queries = projectBatches.map(batch =>
+                db.collection('tasks')
+                  .where('projectId', 'in', batch)
+                  .where('isHelpRequest', '==', true)
+                  .get()
+              );
+
+              return Promise.all(queries).then(results => {
+                // מיזוג התוצאות מכל ה-queries
+                const mergedDocs = [];
+                results.forEach(result => {
+                  result.docs.forEach(doc => mergedDocs.push(doc));
+                });
+                return { docs: mergedDocs };
+              });
+            })
+        ])
+        .then(([assignedTasks, personalTasks, ownedHelpTasks, memberHelpTasks]) => {
+          // איחוד כל המשימות ומניעת כפילויות
+          const uniqueTasks = new Map();
+
+          function addToMap(snapshot, source) {
+            snapshot.docs.forEach(doc => {
+              if (!uniqueTasks.has(doc.id)) {
+                const taskData = doc.data();
+                uniqueTasks.set(doc.id, {
+                  id: doc.id,
+                  data: taskData,
+                  source: source
+                });
+
+                // שמירת תגיות לסינון
+                if (taskData.tags && taskData.tags.length > 0) {
+                  taskData.tags.forEach(tag => allTags.add(tag));
+                }
+              }
+            });
+          }
+
+          addToMap(assignedTasks, 'assigned');
+          addToMap(personalTasks, 'personal');
+          addToMap(ownedHelpTasks, 'ownedHelp');
+          addToMap(memberHelpTasks, 'memberHelp');
+
+          // שמירת המשימות במשתנה גלובלי
+          userDashboardTasks = Array.from(uniqueTasks.values());
+
+          // עדכון הסינון של תגיות
+          updateTagsDropdown();
+
+          // הצגת המשימות בדשבורד
+          filterDashboardTasks();
+
+          hideLoader();
+        })
+        .catch(error => {
+          console.error("Error loading dashboard:", error);
+          hideLoader();
+          alert("שגיאה בטעינת המשימות");
+        });
+      }
+
+      function updateProjectsDropdown() {
+        const projectSelect = document.getElementById('dashboard-filter-project');
+        projectSelect.innerHTML = '<option value="all">כל הפרויקטים</option>';
+
+        allProjects.forEach(project => {
+          const option = document.createElement('option');
+          option.value = project.id;
+          option.textContent = project.data.name;
+          projectSelect.appendChild(option);
+        });
+      }
+
+      function updateTagsDropdown() {
+        const tagSelect = document.getElementById('dashboard-filter-tag');
+        tagSelect.innerHTML = '<option value="all">כל התגיות</option>';
+
+        allTags.forEach(tag => {
+          const option = document.createElement('option');
+          option.value = tag;
+          option.textContent = tag;
+          tagSelect.appendChild(option);
+        });
+      }
+
+      function filterDashboardTasks() {
+        const projectFilter = document.getElementById('dashboard-filter-project').value;
+        const sortBy = document.getElementById('dashboard-sort-by').value;
+        const tagFilter = document.getElementById('dashboard-filter-tag').value;
+        const statusFilter = document.getElementById('dashboard-filter-status').value;
+
+        // סינון המשימות
+        let filteredTasks = userDashboardTasks.filter(task => {
+          // סינון לפי פרויקט
+          if (projectFilter !== 'all' && task.data.projectId !== projectFilter) {
+            return false;
+          }
+
+          // סינון לפי תגית
+          if (tagFilter !== 'all') {
+            const taskTags = task.data.tags || [];
+            if (!taskTags.includes(tagFilter)) {
+              return false;
+            }
+          }
+
+          // סינון לפי סטטוס
+          if (statusFilter !== 'all' && task.data.status !== statusFilter) {
+            return false;
+          }
+
+          return true;
+        });
+
+        // מיון המשימות
+        filteredTasks.sort((a, b) => {
+          switch (sortBy) {
+            case 'deadline':
+              // אם אין תאריך, לשים בסוף
+              if (!a.data.deadline) return 1;
+              if (!b.data.deadline) return -1;
+              return new Date(a.data.deadline) - new Date(b.data.deadline);
+            case 'name':
+              return a.data.name.localeCompare(b.data.name);
+            case 'project':
+              const projectA = allProjects.find(p => p.id === a.data.projectId);
+              const projectB = allProjects.find(p => p.id === b.data.projectId);
+              return (projectA?.data.name || '').localeCompare(projectB?.data.name || '');
+            case 'status':
+              const statusOrder = {
+                'blocked': 0,
+                'waiting': 1,
+                'not-started': 2,
+                'in-progress': 3,
+                'completed': 4
+              };
+              const statusA = statusOrder[a.data.status] || 999;
+              const statusB = statusOrder[b.data.status] || 999;
+              return statusA - statusB;
+            default:
+              return 0;
+          }
+        });
+
+        // הצגת המשימות
+        displayDashboardTasks(filteredTasks);
+      }
+
+      function displayDashboardTasks(tasks) {
+        const pendingTasksContainer = document.getElementById('dashboard-tasks');
+        const completedTasksContainer = document.getElementById('dashboard-completed-tasks');
+        const helpTasksContainer = document.getElementById('dashboard-help-tasks');
+
+        pendingTasksContainer.innerHTML = '';
+        completedTasksContainer.innerHTML = '';
+        helpTasksContainer.innerHTML = '';
+
+        // בדיקה אם יש משימות
+        if (tasks.length === 0) {
+          pendingTasksContainer.innerHTML = '<div>אין משימות לתצוגה.</div>';
+          completedTasksContainer.innerHTML = '<div>אין משימות שהושלמו.</div>';
+          helpTasksContainer.innerHTML = '<div>אין בקשות עזרה.</div>';
+          return;
+        }
+
+        // סינון המשימות לפי סוג
+        const completedTasks = tasks.filter(task => task.data.status === 'completed');
+        const helpTasks = tasks.filter(task => task.data.isHelpRequest && task.data.status !== 'completed');
+        const pendingTasks = tasks.filter(task => task.data.status !== 'completed' && !task.data.isHelpRequest);
+
+        // הצגת המשימות הפתוחות
+        if (pendingTasks.length === 0) {
+          pendingTasksContainer.innerHTML = '<div>אין משימות לביצוע.</div>';
+        } else {
+          pendingTasks.forEach(task => {
+            pendingTasksContainer.appendChild(createDashboardTaskElement(task));
+          });
+        }
+
+        // הצגת המשימות שהושלמו
+        if (completedTasks.length === 0) {
+          completedTasksContainer.innerHTML = '<div>אין משימות שהושלמו.</div>';
+        } else {
+          completedTasks.forEach(task => {
+            completedTasksContainer.appendChild(createDashboardTaskElement(task));
+          });
+        }
+
+        // הצגת בקשות העזרה
+        if (helpTasks.length === 0) {
+          helpTasksContainer.innerHTML = '<div>אין בקשות עזרה כרגע.</div>';
+        } else {
+          helpTasks.forEach(task => {
+            helpTasksContainer.appendChild(createDashboardTaskElement(task));
+          });
+        }
+      }
+
+      function createDashboardTaskElement(task) {
+        // מצא את הפרויקט המשויך
+        const project = allProjects.find(p => p.id === task.data.projectId) || { data: { name: 'פרויקט לא ידוע' } };
+
+        // יצירת אלמנט המשימה
+        const taskElement = document.createElement('div');
+        taskElement.className = `task-item ${task.data.status === 'completed' ? 'completed' : ''} ${task.data.isHelpRequest ? 'help-request' : ''}`;
+
+        // בדיקת תאריך יעד חלף
+        let dueDateClass = '';
+        let dueDateText = 'אין תאריך יעד';
+
+        if (task.data.deadline) {
+          const dueDate = new Date(task.data.deadline);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          if (dueDate < today && task.data.status !== 'completed') {
+            dueDateClass = 'overdue';
+          }
+
+          dueDateText = dueDate.toLocaleDateString('he-IL');
+        }
+
+        // יצירת תגיות
+        let tagsHtml = '';
+
+        if (task.data.tags && task.data.tags.length > 0) {
+          tagsHtml = '<div class="tags-container">';
+
+          task.data.tags.forEach(tag => {
+            const tagClass = getTagColorClass(tag);
+            tagsHtml += '<span class="tag ' + tagClass + '">' + tag + '</span>';
+          });
+
+          tagsHtml += '</div>';
+        }
+
+        // קבלת תיאור סטטוס משימה
+        const statusClass = `status-${task.data.status || 'not-started'}`;
+        const statusText = statusLabels[task.data.status || 'not-started'];
+        const statusHtml = `<span class="task-status ${statusClass}">${statusText}</span>`;
+
+        // בניית תוכן ה-HTML
+        let innerHtml = '';
+
+        // חלק ראשון - תוכן המשימה
+        innerHtml += '<div style="display: flex; align-items: flex-start;">';
+        innerHtml += '<div class="task-content">';
+        innerHtml += '<h4 class="task-title">' + task.data.name + '</h4>';
+        innerHtml += '<div class="task-description">' + (task.data.description || 'אין תיאור') + '</div>';
+        innerHtml += '<div class="task-meta">';
+        innerHtml += '<span><i class="fas fa-briefcase"></i> ' + (project.data ? project.data.name : 'פרויקט לא ידוע') + '</span>';
+        innerHtml += '<span class="task-due-date ' + dueDateClass + '"><i class="fas fa-calendar-alt"></i> ' + dueDateText + '</span>';
+        innerHtml += statusHtml;
+
+        if (task.data.isHelpRequest) {
+          innerHtml += '<span class="badge" style="background-color: var(--warning); color: white;"><i class="fas fa-hands-helping"></i> בקשת עזרה</span>';
+        }
+
+        // מידע על אחראי המשימה (רק בפרויקטים צוותיים)
+        if (task.data.assigneeId && project.data.type === 'team') {
+          // חיפוש אחראי ברשימת חברי הצוות של הפרויקט
+          const projectMembers = currentProjectMembers.filter(member => member.userId === task.data.assigneeId);
+          let assigneeName = 'לא ידוע';
+          let assigneeInitial = '?';
+
+          if (projectMembers.length > 0) {
+            assigneeName = projectMembers[0].displayName;
+            assigneeInitial = assigneeName.charAt(0).toUpperCase();
+          } else if (task.data.assigneeId === currentUser.uid) {
+            assigneeName = currentUser.email.split('@')[0];
+            assigneeInitial = assigneeName.charAt(0).toUpperCase();
+          }
+
+          innerHtml += '<span class="task-assignee">';
+          innerHtml += `<span class="assignee-avatar">${assigneeInitial}</span>`;
+          innerHtml += `<span>${assigneeName}</span>`;
+          innerHtml += '</span>';
+        }
+
+        innerHtml += '</div>'; // סגירת task-meta
+        innerHtml += tagsHtml;
+        innerHtml += '</div>'; // סגירת task-content
+        innerHtml += '</div>'; // סגירת div עליון
+
+        // חלק שני - כפתורי פעולה
+        innerHtml += '<div class="task-actions">';
+        innerHtml += '<button class="btn btn-sm view-task" data-project-id="' + task.data.projectId + '" data-task-id="' + task.id + '">';
+        innerHtml += '<i class="fas fa-eye"></i>';
+        innerHtml += '</button>';
+
+        if (task.data.isHelpRequest && !task.data.assigneeId) {
+          innerHtml += '<button class="btn btn-sm btn-warning take-help-task" data-id="' + task.id + '">';
+          innerHtml += '<i class="fas fa-hand-holding-heart"></i> קח משימה';
+          innerHtml += '</button>';
+        }
+
+        innerHtml += '</div>'; // סגירת task-actions
+
+        // הוספת ה-HTML לאלמנט
+        taskElement.innerHTML = innerHtml;
+
+        // הוספת אירועים
+        const viewButton = taskElement.querySelector('.view-task');
+        if (viewButton) {
+          viewButton.addEventListener('click', function() {
+            const projectId = this.getAttribute('data-project-id');
+            const taskId = this.getAttribute('data-task-id');
+            openProject(projectId, null, taskId);
+          });
+        }
+
+        const takeHelpButton = taskElement.querySelector('.take-help-task');
+        if (takeHelpButton) {
+          takeHelpButton.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-id');
+            takeHelpTask(taskId);
+          });
+        }
+
+        return taskElement;
+      }
+
+      function getTagColorClass(tag) {
+        // מתן צבע לתגית לפי השם
+        const tagLower = tag.toLowerCase();
+
+        if (tagLower.includes('דחוף') || tagLower.includes('חשוב')) {
+          return 'tag-red';
+        } else if (tagLower.includes('בינוני')) {
+          return 'tag-yellow';
+        } else if (tagLower.includes('נמוך')) {
+          return 'tag-green';
+        } else if (tagLower.includes('באג') || tagLower.includes('תקלה')) {
+          return 'tag-red';
+        } else if (tagLower.includes('פיתוח')) {
+          return 'tag-blue';
+        } else if (tagLower.includes('עיצוב')) {
+          return 'tag-purple';
+        } else if (tagLower.includes('תוכן')) {
+          return 'tag-cyan';
+        }
+
+        // אם אין התאמה ספציפית, להחזיר צבע לפי hash של השם
+        const hash = tag.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 6;
+
+        const colors = ['tag-blue', 'tag-green', 'tag-red', 'tag-yellow', 'tag-purple', 'tag-cyan'];
+        return colors[hash];
+      }
+
+      function takeHelpTask(taskId) {
+        if (!confirm('האם אתה בטוח שברצונך לקחת את המשימה?')) {
+          return;
+        }
+
+        showLoader();
+
+        db.collection('tasks').doc(taskId).update({
+          assigneeId: currentUser.uid,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        })
+        .then(() => {
+          hideLoader();
+          loadDashboard(); // רענון הדשבורד
+          alert('המשימה נוספה למשימות שלך');
+        })
+        .catch(error => {
+          hideLoader();
+          console.error("Error taking help task:", error);
+          alert('שגיאה בלקיחת המשימה');
+        });
+      }
+
+      // חיפוש משתמש לפי אימייל
+      function searchUserByEmail() {
+        const email = document.getElementById('member-email').value.trim().toLowerCase();
+        const resultsDiv = document.getElementById('member-search-results');
+
+        if (!email) {
+          resultsDiv.innerHTML = '';
+          return;
+        }
+
+        resultsDiv.innerHTML = '<div class="text-center">מחפש משתמש...</div>';
+
+        db.collection('users')
+          .where('email', '==', email)
+          .limit(1)
+          .get()
+          .then(snapshot => {
+          if (snapshot.empty) {
+            resultsDiv.innerHTML = '<div style="color: var(--danger); padding: 10px; background-color: #f8d7da; border-radius: 4px; margin-top: 10px;">משתמש לא נמצא. הזמן אותו להירשם למערכת.</div>';
+            return;
+          }
+
+          const user = snapshot.docs[0].data();
+          resultsDiv.innerHTML = `
+            <div style="background-color: #f0f0f0; padding: 15px; border-radius: var(--radius); margin-top: 15px;">
+              <div style="font-weight: 500; font-size: 16px;">${user.displayName || user.email}</div>
+              <div style="color: #666;">${user.email}</div>
+            </div>
+          `;
+
+          // בדיקה אם המשתמש כבר בפרויקט
+          const isMember = currentProjectMembers.some(member => member.userId === snapshot.docs[0].id);
+
+          if (isMember) {
+            resultsDiv.innerHTML += '<div style="color: var(--warning); margin-top: 10px;">משתמש זה כבר חבר בפרויקט</div>';
+            document.getElementById('add-member-confirm-btn').disabled = true;
+          } else {
+            document.getElementById('add-member-confirm-btn').disabled = false;
+          }
+        })
+        .catch(error => {
+          console.error("Error searching for user:", error);
+          resultsDiv.innerHTML = '<div style="color: var(--danger);">שגיאה בחיפוש משתמש</div>';
+        });
+    }
+
+    // הוספת חבר לפרויקט
+    function addMemberToProject() {
+      const email = document.getElementById('member-email').value.trim().toLowerCase();
+
+      if (!email) {
+        alert('אנא הזן אימייל');
+        return;
+      }
+
+      showLoader();
+
+      // מציאת המשתמש לפי האימייל
+      db.collection('users')
+        .where('email', '==', email)
+        .limit(1)
+        .get()
+        .then(snapshot => {
+          if (snapshot.empty) {
+            hideLoader();
+            alert('משתמש לא נמצא');
+            return;
+          }
+
+          const memberDoc = snapshot.docs[0];
+          const memberId = memberDoc.id;
+          const memberData = memberDoc.data();
+
+          // בדיקה אם המשתמש כבר קיים בפרויקט
+          if (currentProjectMembers.some(member => member.userId === memberId)) {
+            hideLoader();
+            alert('משתמש זה כבר קיים בפרויקט');
+            return;
+          }
+
+          // הוספת המשתמש לרשימת החברים של הפרויקט
+          db.collection('project_members').add({
+            projectId: currentProjectId,
+            userId: memberId,
+            email: memberData.email,
+            displayName: memberData.displayName || memberData.email.split('@')[0],
+            role: 'member',
+            addedBy: currentUser.uid,
+            addedAt: firebase.firestore.FieldValue.serverTimestamp()
+          })
+          .then(() => {
+            hideLoader();
+            document.getElementById('team-member-modal').style.display = 'none';
+            loadProjectMembers(currentProjectId);
+          })
+          .catch(error => {
+            hideLoader();
+            console.error("Error adding team member:", error);
+            alert('שגיאה בהוספת חבר צוות');
+          });
+        })
+        .catch(error => {
+          hideLoader();
+          console.error("Error searching for user:", error);
+          alert('שגיאה בחיפוש משתמש');
+        });
+    }
+
+    // פונקציות פרויקטים
+    function loadProjects() {
+    showLoader();
+    const projectsList = document.getElementById('projects-list');
+    projectsList.innerHTML = '<div>טוען פרויקטים...</div>';
+
+    // תחילה טען רק פרויקטים שהמשתמש הוא הבעלים שלהם
+    db.collection('projects')
+      .where('userId', '==', currentUser.uid)
+      .get()
+      .then(snapshot => {
+        let allProjectsList = [];
+
+        snapshot.forEach(doc => {
+          const project = doc.data();
+          allProjectsList.push({
+            id: doc.id,
+            data: project,
+            role: 'owner',
+            type: project.type || 'personal'
+          });
+        });
+
+        // שמירת הפרויקטים במשתנה גלובלי
+        allProjects = allProjectsList;
+
+        // סינון לפי הסוג שנבחר אם צריך
+        if (currentFilter !== "all") {
+          allProjectsList = allProjectsList.filter(p => p.data.type === currentFilter);
+        }
+
+        // הצגת הפרויקטים
+        displayProjects(allProjectsList);
+        hideLoader();
+
+        // רק אחרי שהצגת את הפרויקטים של המשתמש, נסה לטעון גם פרויקטים שהוא חבר בהם
+        if (currentFilter === "all" || currentFilter === "team") {
+          loadTeamProjects();
+        }
+      })
+      .catch(error => {
+        console.error("Error loading projects:", error);
+        projectsList.innerHTML = '<div>שגיאה בטעינת פרויקטים. נסה שוב מאוחר יותר.</div>';
+        hideLoader();
+      });
+  }
+
+  // פונקציה נפרדת לטעינת פרויקטים צוותיים שהמשתמש חבר בהם
+  function loadTeamProjects() {
+    db.collection('project_members')
+      .where('userId', '==', currentUser.uid)
+      .get()
+      .then(memberships => {
+        if (memberships.empty) return;
+
+        const projectIds = memberships.docs.map(doc => doc.data().projectId);
+
+        // שליפת פרויקטים אחד אחד במקום ב-batch
+        const promises = projectIds.map(projectId =>
+          db.collection('projects').doc(projectId).get()
+            .then(doc => {
+              if (doc.exists) {
+                const project = doc.data();
+                // בדיקה שהפרויקט לא כבר ברשימה
+                if (!allProjects.some(p => p.id === doc.id)) {
+                  allProjects.push({
+                    id: doc.id,
+                    data: project,
+                    role: 'member',
+                    type: project.type
+                  });
+                }
+              }
+              return null;
+            })
+            .catch(error => {
+              console.error("Error loading team project:", error);
+              return null;
+            })
+        );
+
+        Promise.all(promises)
+          .then(() => {
+            // סינון לפי הסוג שנבחר אם צריך
+            let projectsToDisplay = allProjects;
+            if (currentFilter !== "all") {
+              projectsToDisplay = allProjects.filter(p => p.data.type === currentFilter);
+            }
+
+            // הצגת הפרויקטים המעודכנים
+            displayProjects(projectsToDisplay);
+          })
+          .catch(error => {
+            console.error("Error loading team projects:", error);
+          });
+      })
+      .catch(error => {
+        console.error("Error loading team memberships:", error);
+      });
+  }
+    // הצגת הפרויקטים בממשק
+    function displayProjects(projects) {
+      const projectsList = document.getElementById('projects-list');
+
+      if (projects.length === 0) {
+        projectsList.innerHTML = '<div style="text-align: center; padding: 20px;">אין פרויקטים. לחץ על "פרויקט חדש" כדי להתחיל.</div>';
+        return;
+      }
+
+      projectsList.innerHTML = '';
+
+      projects.forEach(project => {
+        const { id, data, role, type } = project;
+
+        // הצגת תאריך בפורמט מקומי
+        let deadlineText = 'אין תאריך יעד';
+        let isOverdue = false;
+
+        if (data.deadline) {
+          const date = new Date(data.deadline);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          deadlineText = date.toLocaleDateString('he-IL');
+
+          if (date < today) {
+            isOverdue = true;
+          }
+        }
+
+        // מחשב את התקדמות המשימות
+        const progress = Math.random() * 100; // כרגע אקראי, צריך לחשב באמת לפי המשימות
+
+        // יצירת כרטיס פרויקט
+        const projectCard = document.createElement('div');
+        projectCard.className = 'card project-card';
+        projectCard.style.borderRight = `5px solid ${isOverdue ? 'var(--danger)' : 'var(--primary)'}`;
+
+        // אינדיקטור סוג פרויקט
+        const typeIndicator = document.createElement('div');
+        typeIndicator.className = `project-type-indicator ${data.type === 'personal' ? 'personal-project' : 'team-project'}`;
+        typeIndicator.textContent = data.type === 'personal' ? 'אישי' : 'צוותי';
+        projectCard.appendChild(typeIndicator);
+
+        // תוכן הכרטיס
+        const cardContent = document.createElement('div');
+        cardContent.className = 'project-card-content';
+        cardContent.innerHTML = `
+          <h3 class="project-card-title">${data.name}</h3>
+          <div class="project-card-description">${data.description || 'אין תיאור'}</div>
+          <div class="project-card-footer">
+            <div>
+              <div><i class="fas fa-calendar-alt"></i> ${deadlineText}</div>
+              ${role === 'owner' ? '<span class="badge badge-owner">מנהל</span>' : '<span class="badge badge-member">חבר</span>'}
+            </div>
+            ${role === 'owner' ?
+              `<button class="btn btn-sm btn-danger delete-project" data-id="${id}">
+                <i class="fas fa-trash"></i>
+               </button>` : ''}
+          </div>
+        `;
+        projectCard.appendChild(cardContent);
+
+        // אירוע לחיצה על כרטיס פרויקט
+        projectCard.addEventListener('click', (e) => {
+          if (!e.target.closest('.delete-project')) {
+            openProject(id, role);
+          }
+        });
+
+        // אירוע מחיקת פרויקט
+        const deleteButton = projectCard.querySelector('.delete-project');
+        if (deleteButton) {
+          deleteButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('האם אתה בטוח שברצונך למחוק פרויקט זה?')) {
+              deleteProject(id);
+            }
+          });
+        }
+
+        projectsList.appendChild(projectCard);
+      });
+    }
+
+    function loadProjectMembers(projectId) {
+      console.log('Starting loadProjectMembers with id:', projectId);
+
+      const membersList = document.getElementById('team-members-list');
+      if (!membersList) {
+        console.error('Error: team-members-list element not found!');
+        return;
+      }
+
+      membersList.innerHTML = '<div>טוען חברי צוות...</div>';
+
+      db.collection('project_members')
+        .where('projectId', '==', projectId)
+        .get()
+        .then(snapshot => {
+          console.log('Members data received, count:', snapshot.size);
+
+          if (snapshot.empty && (!currentProjectData || currentProjectData.userId !== currentUser.uid)) {
+            membersList.innerHTML = '<div>אין חברי צוות נוספים בפרויקט.</div>';
+            currentProjectMembers = [];
+            return;
+          }
+
+          membersList.innerHTML = '';
+          currentProjectMembers = [];
+
+          // הוספת בעל הפרויקט
+          if (currentProjectData) {
+            console.log('Adding project owner to members list');
+            currentProjectMembers.push({
+              userId: currentProjectData.userId,
+              email: currentProjectData.ownerEmail || currentUser.email,
+              displayName: currentProjectData.ownerName || currentUser.email.split('@')[0],
+              role: 'owner'
+            });
+
+            const ownerItem = document.createElement('div');
+            ownerItem.className = 'member-item';
+            ownerItem.innerHTML = `
+              <div>
+                <strong>${currentProjectData.ownerName || currentUser.email.split('@')[0]}</strong>
+                <div>${currentProjectData.ownerEmail || currentUser.email}</div>
+                <span class="badge badge-owner">מנהל פרויקט</span>
+              </div>
+            `;
+            membersList.appendChild(ownerItem);
+          }
+
+          // הוספת שאר חברי הצוות
+          console.log('Adding other team members');
+          snapshot.forEach(doc => {
+            const member = doc.data();
+            const memberId = doc.id;
+
+            currentProjectMembers.push({
+              userId: member.userId,
+              email: member.email,
+              displayName: member.displayName,
+              role: member.role
+            });
+
+            const memberItem = document.createElement('div');
+            memberItem.className = 'member-item';
+            memberItem.innerHTML = `
+              <div>
+                <strong>${member.displayName}</strong>
+                <div>${member.email}</div>
+              </div>
+            `;
+
+            // אפשרות הסרת חבר צוות רק לבעל הפרויקט
+            if (currentProjectData && currentProjectData.userId === currentUser.uid) {
+              const removeButton = document.createElement('button');
+              removeButton.className = 'btn btn-sm btn-danger';
+              removeButton.innerHTML = '<i class="fas fa-user-minus"></i>';
+              removeButton.addEventListener('click', function() {
+                if (confirm(`האם להסיר את ${member.displayName} מהפרויקט?`)) {
+                  removeTeamMember(memberId);
+                }
+              });
+              memberItem.appendChild(removeButton);
+            }
+
+            membersList.appendChild(memberItem);
+          });
+
+          // עדכון דרופדאון אחראים למשימות
+          updateAssigneeDropdown();
+
+          console.log('Finished loading members');
+        })
+        .catch(error => {
+          console.error("Error loading team members:", error);
+          membersList.innerHTML = '<div>שגיאה בטעינת חברי צוות.</div>';
+        });
+    }
+
+    // עדכון רשימת האחראים למשימות בדרופדאון
+    function updateAssigneeDropdown() {
+      const assigneeFilter = document.getElementById('task-filter-assignee');
+      if (!assigneeFilter) return;
+
+      assigneeFilter.innerHTML = '<option value="all">כל האחראים</option>';
+      assigneeFilter.innerHTML += '<option value="none">ללא אחראי</option>';
+
+      // הוספת כל חברי הצוות לרשימה
+      currentProjectMembers.forEach(member => {
+        const option = document.createElement('option');
+        option.value = member.userId;
+        option.textContent = member.displayName;
+        assigneeFilter.appendChild(option);
+      });
+
+      // הצגת הדרופדאון רק בפרויקטים צוותיים
+      if (currentProjectData && currentProjectData.type === 'team') {
+        assigneeFilter.classList.remove('hidden');
+      } else {
+        assigneeFilter.classList.add('hidden');
+      }
+    }
+
+    function removeTeamMember(membershipId) {
+      showLoader();
+
+      db.collection('project_members').doc(membershipId).delete()
+        .then(() => {
+          hideLoader();
+          loadProjectMembers(currentProjectId);
+        })
+        .catch(error => {
+          hideLoader();
+          console.error("Error removing team member:", error);
+          alert("שגיאה בהסרת חבר צוות");
+        });
+    }
+
+    function openProject(projectId, userRole, taskIdToShow = null) {
+      console.log('Starting openProject with id:', projectId);
+      showLoader();
+
+      currentProjectId = projectId;
+
+      try {
+        // שינוי תצוגה - השתמש בקלאסים במקום בסגנון ישיר
+        console.log('Changing view');
+        document.getElementById('projects-view').classList.add('hidden');
+        document.getElementById('dashboard-view').classList.add('hidden');
+        document.getElementById('project-detail-view').classList.remove('hidden');
+
+        // טעינת פרטי הפרויקט
+        console.log('Loading project details');
+        db.collection('projects').doc(projectId).get()
+          .then(doc => {
+            console.log('Received doc:', doc.exists);
+            if (!doc.exists) {
+              hideLoader();
+              alert('הפרויקט לא נמצא');
+              return;
+            }
+
+            const project = doc.data();
+            console.log('Project data received:', project);
+            currentProjectData = project;
+
+            // הצגת תאריך בפורמט מקומי
+            let deadlineText = 'אין תאריך יעד';
+            let deadlineClass = '';
+
+            if (project.deadline) {
+              const date = new Date(project.deadline);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+
+              deadlineText = date.toLocaleDateString('he-IL');
+
+              if (date < today) {
+                deadlineClass = 'text-danger';
+              }
+            }
+
+            console.log('Updating project detail HTML');
+            // הצגת פרטי הפרויקט
+            const projectDetail = document.getElementById('project-detail');
+            if (!projectDetail) {
+              console.error('Error: project-detail element not found!');
+              hideLoader();
+              return;
+            }
+
+            projectDetail.innerHTML = `
+              <h2 style="margin-bottom: 15px;">${project.name}</h2>
+              <div style="background-color: var(--light); padding: 15px; border-radius: var(--radius); margin-bottom: 20px;">
+                <p style="margin-bottom: 15px;">${project.description || 'אין תיאור'}</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                  <div>
+                    <strong><i class="fas fa-tag"></i> סוג פרויקט:</strong>
+                    <span class="badge ${project.type === 'personal' ? 'personal-project' : 'team-project'}" style="margin-right: 5px;">
+                      ${project.type === 'personal' ? 'אישי' : 'צוותי'}
+                    </span>
+                  </div>
+                  <div>
+                    <strong><i class="fas fa-calendar-alt"></i> תאריך יעד:</strong>
+                    <span class="${deadlineClass}">${deadlineText}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+
+            console.log('Project detail HTML updated');
+
+            // הוספת כפתור עריכה רק למי שיצר את הפרויקט
+            if (project.userId === currentUser.uid) {
+              console.log('Adding edit button for project owner');
+              const editButton = document.createElement('button');
+              editButton.className = 'btn';
+              editButton.innerHTML = '<i class="fas fa-edit"></i> ערוך פרויקט';
+              editButton.addEventListener('click', function() {
+                showEditProjectModal(projectId, project);
+              });
+              projectDetail.appendChild(editButton);
+            }
+
+            console.log('Setting up team members section');
+            // הצגת חברי צוות רק בפרויקטים צוותיים
+            const teamMembersSection = document.getElementById('team-members-section');
+            if (teamMembersSection) {
+              // שימוש בקלאסים במקום style ישיר
+              if (project.type === 'team') {
+                teamMembersSection.classList.remove('hidden');
+              } else {
+                teamMembersSection.classList.add('hidden');
+              }
+            } else {
+              console.error('Error: team-members-section element not found!');
+            }
+
+            // הגדרת התצוגה של הטאבים לפי סוג פרויקט
+            const taskViewTabs = document.getElementById('task-view-tabs');
+            if (project.type === 'team') {
+              taskViewTabs.classList.remove('hidden');
+            } else {
+              taskViewTabs.classList.add('hidden');
+              // בפרויקט אישי תמיד להציג את תצוגת הרשימה
+              document.getElementById('tasks-list-view').classList.remove('hidden');
+              document.getElementById('tasks-by-assignee-view').classList.add('hidden');
+              currentTaskView = "list";
+            }
+
+            if (project.type === 'team') {
+              console.log('Loading project members');
+              loadProjectMembers(projectId);
+
+              // הצגת כפתור הוספת חברים רק לבעל הפרויקט
+              const addMemberBtn = document.getElementById('add-member-btn');
+              if (addMemberBtn) {
+                // לוודא שהכפתור נראה אם המשתמש הוא בעל הפרויקט
+                if (project.userId === currentUser.uid) {
+                  addMemberBtn.style.display = 'block';
+                  console.log('Add member button shown (project owner)');
+                } else {
+                  addMemberBtn.style.display = 'none';
+                  console.log('Add member button hidden (not project owner)');
+                }
+              } else {
+                console.error('Error: add-member-btn element not found!');
+              }
+            }
+
+            console.log('Updating task tags dropdown');
+            // עדכון הסינון לפי תגיות
+            updateProjectTaskTagsDropdown(projectId);
+
+            console.log('Loading tasks');
+            // טעינת המשימות של הפרויקט
+            loadTasks(projectId, taskIdToShow);
+
+            console.log('Project loaded successfully');
+          })
+          .catch(function(error) {
+            console.error('Error in openProject:', error);
+            console.error('Error details:', error.message, error.stack);
+            hideLoader();
+
+            // במקרה של שגיאה, חזרה למצב הקודם
+            document.getElementById('projects-view').classList.remove('hidden');
+            document.getElementById('project-detail-view').classList.add('hidden');
+
+            alert('שגיאה בטעינת פרטי הפרויקט: ' + (error.message || 'בעיה לא ידועה'));
+          });
+      } catch (e) {
+        // תפיסת שגיאות שעלולות להתרחש לפני הבטחה
+        console.error('Unexpected error in openProject function:', e);
+        hideLoader();
+
+        // חזרה למצב הקודם
+        document.getElementById('projects-view').classList.remove('hidden');
+        document.getElementById('project-detail-view').classList.add('hidden');
+
+        alert('שגיאה בפתיחת הפרויקט: ' + (e.message || 'בעיה לא ידועה'));
+      }
+    }
+
+    function updateProjectTaskTagsDropdown(projectId) {
+      // טעינת תגיות המשימות של הפרויקט הנוכחי
+      db.collection('tasks')
+        .where('projectId', '==', projectId)
+        .get()
+        .then(snapshot => {
+          const tags = new Set();
+
+          snapshot.forEach(doc => {
+            const task = doc.data();
+            if (task.tags && task.tags.length > 0) {
+              task.tags.forEach(tag => tags.add(tag));
+            }
+          });
+
+          // עדכון הדרופדאון
+          const tagSelect = document.getElementById('task-filter-tag');
+          tagSelect.innerHTML = '<option value="all">כל התגיות</option>';
+
+          tags.forEach(tag => {
+            const option = document.createElement('option');
+            option.value = tag;
+            option.textContent = tag;
+            tagSelect.appendChild(option);
+          });
+        })
+        .catch(error => {
+          console.error("Error loading project tags:", error);
+        });
+    }
+
+    function showAddProjectModal() {
+      document.getElementById('project-modal-title').textContent = 'פרויקט חדש';
+      document.getElementById('project-name').value = '';
+      document.getElementById('project-description').value = '';
+      document.getElementById('project-deadline').value = '';
+      document.getElementById('project-type').value = 'personal';
+      document.getElementById('project-type').disabled = false;
+      document.getElementById('project-id').value = '';
+
+      document.getElementById('project-modal').style.display = 'block';
+    }
+
+    function showEditProjectModal(projectId, project) {
+      document.getElementById('project-modal-title').textContent = 'עריכת פרויקט';
+      document.getElementById('project-name').value = project.name || '';
+      document.getElementById('project-description').value = project.description || '';
+      document.getElementById('project-deadline').value = project.deadline || '';
+      document.getElementById('project-type').value = project.type || 'personal';
+      document.getElementById('project-id').value = projectId;
+
+      // בעריכת פרויקט קיים לא ניתן לשנות את סוג הפרויקט
+      document.getElementById('project-type').disabled = true;
+
+      document.getElementById('project-modal').style.display = 'block';
+    }
+
+    function saveProject() {
+      const name = document.getElementById('project-name').value.trim();
+      const description = document.getElementById('project-description').value.trim();
+      const deadline = document.getElementById('project-deadline').value;
+      const type = document.getElementById('project-type').value;
+      const projectId = document.getElementById('project-id').value;
+
+      if (!name) {
+       alert('אנא הזן שם לפרויקט');
+       return;
+     }
+
+     showLoader();
+
+     const projectData = {
+       name,
+       description,
+       deadline,
+       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+     };
+
+     let savePromise;
+
+     if (projectId) {
+       // עדכון פרויקט קיים - אין לשנות את הסוג
+       savePromise = db.collection('projects').doc(projectId).update(projectData);
+     } else {
+       // יצירת פרויקט חדש
+       projectData.userId = currentUser.uid;
+       projectData.type = type;
+       projectData.ownerEmail = currentUser.email;
+       projectData.ownerName = currentUser.email.split('@')[0]; // שם תצוגה בסיסי
+       projectData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+       savePromise = db.collection('projects').add(projectData);
+     }
+
+     savePromise
+       .then((result) => {
+         hideLoader();
+         document.getElementById('project-modal').style.display = 'none';
+         document.getElementById('project-type').disabled = false; // החזרת הבחירה למצב פעיל
+
+         if (projectId) {
+           // אם זו עריכת פרויקט קיים
+           openProject(projectId);
+         } else {
+           // אם זה פרויקט חדש
+           loadProjects();
+         }
+       })
+       .catch(error => {
+         hideLoader();
+         console.error("Error saving project:", error);
+         alert('שגיאה בשמירת פרויקט');
+         document.getElementById('project-type').disabled = false;
+       });
+   }
+
+   function deleteProject(projectId) {
+     if (!confirm('האם אתה בטוח שברצונך למחוק פרויקט זה? כל המשימות וחברי הצוות יימחקו.')) {
+       return;
+     }
+
+     showLoader();
+
+     // ראשית מחיקת כל המשימות השייכות לפרויקט
+     db.collection('tasks')
+       .where('projectId', '==', projectId)
+       .get()
+       .then(snapshot => {
+         const batch = db.batch();
+
+         snapshot.forEach(doc => {
+           batch.delete(doc.ref);
+         });
+
+         return batch.commit();
+       })
+       .then(() => {
+         // מחיקת חברי הצוות מהפרויקט (אם יש)
+         return db.collection('project_members')
+           .where('projectId', '==', projectId)
+           .get();
+       })
+       .then(snapshot => {
+         const batch = db.batch();
+
+         snapshot.forEach(doc => {
+           batch.delete(doc.ref);
+         });
+
+         return batch.commit();
+       })
+       .then(() => {
+         // מחיקת הפרויקט עצמו
+         return db.collection('projects').doc(projectId).delete();
+       })
+       .then(() => {
+         hideLoader();
+         // בדיקה אם הפרויקט הנוכחי נמחק
+         if (currentProjectId === projectId) {
+           document.getElementById('projects-view').classList.remove('hidden');
+           document.getElementById('project-detail-view').classList.add('hidden');
+           currentProjectId = null;
+         }
+
+         // רענון רשימת הפרויקטים
+         loadProjects();
+       })
+       .catch(error => {
+         hideLoader();
+         console.error("Error deleting project:", error);
+         alert('שגיאה במחיקת פרויקט');
+       });
+   }
+
+   // פונקציות משימות
+   function loadTasks(projectId, taskIdToShow = null) {
+     console.log('Starting loadTasks with id:', projectId);
+
+     const tasksList = document.getElementById('tasks-list');
+     if (!tasksList) {
+       console.error('Error: tasks-list element not found!');
+       hideLoader();
+       return;
+     }
+
+     tasksList.innerHTML = '<div>טוען משימות...</div>';
+
+     try {
+       // קבלת פרמטרים של סינון ומיון
+       const sortByElement = document.getElementById('task-sort-by');
+       const filterTagElement = document.getElementById('task-filter-tag');
+       const filterStatusElement = document.getElementById('task-filter-status');
+       const filterAssigneeElement = document.getElementById('task-filter-assignee');
+
+       if (!sortByElement || !filterTagElement || !filterStatusElement) {
+         console.error('Error: Sort or filter elements not found!');
+         hideLoader();
+         return;
+       }
+
+       const sortValue = sortByElement.value;
+       const [sortField, sortDirection] = sortValue.split('-');
+       const filterTag = filterTagElement.value;
+       const filterStatus = filterStatusElement.value;
+       const filterAssignee = filterAssigneeElement ? filterAssigneeElement.value : 'all';
+
+       console.log('Query parameters:', {sortField, sortDirection, filterTag, filterStatus, filterAssignee});
+
+       let query = db.collection('tasks')
+         .where('projectId', '==', projectId);
+
+       // הוספת מיון לשאילתא אם אפשר
+       if (sortField === 'createdAt') {
+         query = query.orderBy(sortField, sortDirection);
+       }
+
+       console.log('Fetching tasks from database');
+       query.get()
+         .then(snapshot => {
+           console.log('Tasks data received, count:', snapshot.size);
+
+           if (snapshot.empty) {
+             tasksList.innerHTML = '<div style="text-align: center; padding: 15px;">אין משימות בפרויקט זה. לחץ על "הוסף משימה" להוספת משימה חדשה.</div>';
+
+             // עדכון תצוגת המשימות לפי אחראי
+             if (currentTaskView === "assignee") {
+               document.getElementById('unassigned-tasks-list').innerHTML = '<div>אין משימות ללא אחראי.</div>';
+               document.getElementById('tasks-by-assignee').innerHTML = '';
+             }
+
+             hideLoader();
+             return;
+           }
+
+           // איסוף ועיבוד המשימות
+           let tasks = snapshot.docs.map(doc => {
+             return {
+               id: doc.id,
+               data: doc.data()
+             };
+           });
+
+           console.log('Processing and sorting tasks');
+
+           // סינון לפי תגית אם נבחר
+           if (filterTag !== 'all') {
+             tasks = tasks.filter(task => {
+               const tags = task.data.tags || [];
+               return tags.includes(filterTag);
+             });
+           }
+
+           // סינון לפי סטטוס אם נבחר
+           if (filterStatus !== 'all') {
+             tasks = tasks.filter(task => task.data.status === filterStatus);
+           }
+
+           // סינון לפי אחראי אם נבחר
+           if (filterAssignee !== 'all' && currentTaskView === 'list') {
+             if (filterAssignee === 'none') {
+               tasks = tasks.filter(task => !task.data.assigneeId);
+             } else {
+               tasks = tasks.filter(task => task.data.assigneeId === filterAssignee);
+             }
+           }
+
+           // מיון במידת הצורך (אם השדה אינו createdAt שכבר מתויג בשאילתא)
+           if (sortField !== 'createdAt') {
+             tasks.sort((a, b) => {
+               let valA = a.data[sortField] || '';
+               let valB = b.data[sortField] || '';
+
+               // מיון מיוחד לתאריכים
+               if (sortField === 'deadline') {
+                 valA = valA ? new Date(valA) : new Date(9999, 11, 31);
+                 valB = valB ? new Date(valB) : new Date(9999, 11, 31);
+               }
+
+               // מיון מיוחד לסטטוס
+               if (sortField === 'status') {
+                 const statusOrder = {
+                   'blocked': 0,
+                   'waiting': 1,
+                   'not-started': 2,
+                   'in-progress': 3,
+                   'completed': 4
+                 };
+                 valA = statusOrder[a.data.status || 'not-started'] || 999;
+                 valB = statusOrder[b.data.status || 'not-started'] || 999;
+               }
+
+               if (sortDirection === 'asc') {
+                 return valA > valB ? 1 : -1;
+               } else {
+                 return valA < valB ? 1 : -1;
+               }
+             });
+           }
+
+           console.log('Rendering tasks to UI');
+
+           // שמירת המשימות במשתנה זמני לשימוש בתצוגות שונות
+           const allTasks = [...tasks];
+
+           // אם התצוגה היא לפי רשימה, הצג את המשימות ברשימה
+           if (currentTaskView === "list") {
+             // רנדור המשימות
+             tasksList.innerHTML = '';
+
+             tasks.forEach(task => {
+               try {
+                 const taskElement = createTaskElement(task);
+                 tasksList.appendChild(taskElement);
+               } catch (err) {
+                 console.error('Error creating task element:', err, task);
+               }
+             });
+           } else if (currentTaskView === "assignee") {
+             // אם התצוגה היא לפי אחראי, הצג את המשימות לפי אחראי
+             displayTasksByAssignee(allTasks);
+           }
+
+           // אם יש משימה ספציפית להציג
+           if (taskIdToShow) {
+             console.log('Showing specific task:', taskIdToShow);
+             const taskToShow = tasks.find(t => t.id === taskIdToShow);
+             if (taskToShow) {
+               showEditTaskModal(taskIdToShow, taskToShow.data);
+             }
+           }
+
+           hideLoader();
+           console.log('Tasks loaded successfully');
+         })
+         .catch(error => {
+           console.error("Error loading tasks:", error);
+           hideLoader();
+           tasksList.innerHTML = '<div>שגיאה בטעינת משימות.</div>';
+         });
+     } catch (e) {
+       console.error('Unexpected error in loadTasks:', e);
+       hideLoader();
+       tasksList.innerHTML = '<div>שגיאה בלתי צפויה בטעינת משימות.</div>';
+     }
+   }
+
+   // פונקציה לתצוגת משימות לפי אחראי
+   function displayTasksByAssignee(tasks = null) {
+     if (!tasks) {
+       // אם לא התקבלו משימות, טען מחדש
+       loadTasks(currentProjectId);
+       return;
+     }
+
+     const unassignedContainer = document.getElementById('unassigned-tasks-list');
+     const assigneeContainer = document.getElementById('tasks-by-assignee');
+
+     unassignedContainer.innerHTML = '';
+     assigneeContainer.innerHTML = '';
+
+     // בדיקת הפילטר של האחראי
+     const assigneeFilter = document.getElementById('task-filter-assignee').value;
+
+     // קבוצות משימות לפי אחראי
+     const tasksByAssignee = new Map();
+
+     // משימות ללא אחראי
+     const unassignedTasks = tasks.filter(task => !task.data.assigneeId);
+
+     // סינון לפי סטטוס אם נבחר
+     const statusFilter = document.getElementById('task-filter-status').value;
+
+     let filteredUnassigned = unassignedTasks;
+     if (statusFilter !== 'all') {
+       filteredUnassigned = unassignedTasks.filter(task => task.data.status === statusFilter);
+     }
+
+     // משימות עם אחראי
+     tasks.forEach(task => {
+       if (task.data.assigneeId) {
+         // סינון לפי סטטוס אם נבחר
+         if (statusFilter !== 'all' && task.data.status !== statusFilter) {
+           return;
+         }
+
+         // סינון לפי אחראי ספציפי אם נבחר
+         if (assigneeFilter !== 'all' && assigneeFilter !== 'none' && task.data.assigneeId !== assigneeFilter) {
+           return;
+         }
+
+         if (!tasksByAssignee.has(task.data.assigneeId)) {
+           tasksByAssignee.set(task.data.assigneeId, []);
+         }
+
+         tasksByAssignee.get(task.data.assigneeId).push(task);
+       }
+     });
+
+     // הצגת משימות ללא אחראי
+     if (assigneeFilter === 'all' || assigneeFilter === 'none') {
+       if (filteredUnassigned.length === 0) {
+         unassignedContainer.innerHTML = '<div>אין משימות ללא אחראי.</div>';
+       } else {
+         filteredUnassigned.forEach(task => {
+           unassignedContainer.appendChild(createTaskElement(task));
+         });
+       }
+     } else {
+       unassignedContainer.innerHTML = '<div>מוצגות רק משימות של האחראי שנבחר.</div>';
+     }
+
+     // הצגת משימות לפי אחראי
+     if (tasksByAssignee.size === 0 && (assigneeFilter === 'all' || assigneeFilter !== 'none')) {
+       assigneeContainer.innerHTML = '<div>אין משימות עם אחראים.</div>';
+     } else {
+       // יצירת קונטיינר לכל אחראי
+       tasksByAssignee.forEach((tasks, assigneeId) => {
+         // מציאת פרטי האחראי
+         let assigneeName = 'לא ידוע';
+         let assigneeInitial = '?';
+
+         const assignee = currentProjectMembers.find(member => member.userId === assigneeId);
+         if (assignee) {
+           assigneeName = assignee.displayName;
+           assigneeInitial = assigneeName.charAt(0).toUpperCase();
+         } else if (assigneeId === currentUser.uid) {
+           assigneeName = currentUser.email.split('@')[0];
+           assigneeInitial = assigneeName.charAt(0).toUpperCase();
+         }
+
+         // יצירת קונטיינר לאחראי
+         const assigneeSection = document.createElement('div');
+         assigneeSection.className = 'assignee-tasks-container';
+
+         // כותרת עם פרטי האחראי
+         const assigneeHeader = document.createElement('div');
+         assigneeHeader.className = 'assignee-header';
+         assigneeHeader.innerHTML = `
+           <div class="assignee-avatar">${assigneeInitial}</div>
+           <h3>${assigneeName}</h3>
+         `;
+         assigneeSection.appendChild(assigneeHeader);
+
+         // רשימת המשימות של האחראי
+         const tasksList = document.createElement('div');
+         tasksList.className = 'task-list';
+
+         tasks.forEach(task => {
+           tasksList.appendChild(createTaskElement(task));
+         });
+
+         assigneeSection.appendChild(tasksList);
+         assigneeContainer.appendChild(assigneeSection);
+       });
+     }
+   }
+
+   function createTaskElement(task) {
+     const { id, data } = task;
+
+     // הצגת תאריך בפורמט מקומי
+     let deadlineText = 'אין תאריך יעד';
+     let isOverdue = false;
+
+     if (data.deadline) {
+       const date = new Date(data.deadline);
+       const today = new Date();
+       today.setHours(0, 0, 0, 0);
+
+       deadlineText = date.toLocaleDateString('he-IL');
+
+       if (date < today && data.status !== 'completed') {
+         isOverdue = true;
+       }
+     }
+
+     // יצירת אלמנט משימה
+     const taskItem = document.createElement('div');
+     taskItem.className = `task-item ${data.status === 'completed' ? 'completed' : ''} ${data.isHelpRequest ? 'help-request' : ''}`;
+
+     // קבלת מידע על הסטטוס
+     const statusClass = `status-${data.status || 'not-started'}`;
+     const statusText = statusLabels[data.status || 'not-started'];
+
+     // מידע על האחראי למשימה
+     let assigneeInfo = '';
+     if (currentProjectData && currentProjectData.type === 'team' && data.assigneeId) {
+       const assignee = currentProjectMembers.find(m => m.userId === data.assigneeId);
+       if (assignee) {
+         assigneeInfo = `
+           <div class="task-assignee">
+             <span class="assignee-avatar">${assignee.displayName.charAt(0).toUpperCase()}</span>
+             <span>${assignee.displayName}</span>
+           </div>
+         `;
+       }
+     }
+
+     // יצירת תגיות
+     let tagsHtml = '';
+     if (data.tags && data.tags.length > 0) {
+       tagsHtml = '<div class="tags-container">';
+       data.tags.forEach(tag => {
+         const tagClass = getTagColorClass(tag);
+         tagsHtml += `<span class="tag ${tagClass}">${tag}</span>`;
+       });
+       tagsHtml += '</div>';
+     }
+
+     // מידע נוסף על סטטוס (סיבת עיכוב או ממתין ל...)
+     let statusExtraInfo = '';
+     if (data.status === 'blocked' && data.blockedReason) {
+       statusExtraInfo = `<div style="margin-top: 5px; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> סיבת עיכוב: ${data.blockedReason}</div>`;
+     } else if (data.status === 'waiting' && data.waitingFor) {
+       statusExtraInfo = `<div style="margin-top: 5px; color: var(--warning);"><i class="fas fa-hourglass-half"></i> ממתינה ל: ${data.waitingFor}</div>`;
+     }
+
+     // יצירת התוכן ה-HTML
+     taskItem.innerHTML = `
+       <div style="display: flex; align-items: flex-start;">
+         <div class="task-content">
+           <h4 class="task-title">${data.name}</h4>
+           <div class="task-description">${data.description || 'אין תיאור'}</div>
+           <div class="task-meta">
+             <span class="task-due-date ${isOverdue ? 'overdue' : ''}"><i class="fas fa-calendar-alt"></i> ${deadlineText}</span>
+             <span class="task-status ${statusClass}">${statusText}</span>
+             ${data.isHelpRequest ? '<span class="badge" style="background-color: var(--warning); color: white;"><i class="fas fa-hands-helping"></i> בקשת עזרה</span>' : ''}
+             ${assigneeInfo}
+           </div>
+           ${statusExtraInfo}
+           ${tagsHtml}
+         </div>
+       </div>
+       <div class="task-actions">
+         <button class="btn btn-sm edit-task" data-id="${id}">
+           <i class="fas fa-edit"></i>
+         </button>
+         <button class="btn btn-sm btn-danger delete-task" data-id="${id}">
+           <i class="fas fa-trash"></i>
+         </button>
+       </div>
+     `;
+
+     // הוספת אירועים
+     const editButton = taskItem.querySelector('.edit-task');
+     if (editButton) {
+       editButton.addEventListener('click', function() {
+         db.collection('tasks').doc(id).get()
+           .then(doc => {
+             if (doc.exists) {
+               showEditTaskModal(id, doc.data());
+             }
+           })
+           .catch(error => {
+             console.error("Error fetching task:", error);
+           });
+       });
+     }
+
+     const deleteButton = taskItem.querySelector('.delete-task');
+     if (deleteButton) {
+       deleteButton.addEventListener('click', function() {
+         if (window.confirm("האם למחוק את המשימה?")) {
+           deleteTask(id);
+         }
+       });
+     }
+
+     return taskItem;
+   }
+
+   function showAddTaskModal(isHelpRequest = false) {
+     document.getElementById('task-modal-title').textContent = isHelpRequest ? 'בקשת עזרה חדשה' : 'משימה חדשה';
+     document.getElementById('task-name').value = '';
+     document.getElementById('task-description').value = '';
+     document.getElementById('task-deadline').value = '';
+     document.getElementById('task-id').value = '';
+     document.getElementById('task-project-id').value = currentProjectId;
+     document.getElementById('task-tags-hidden').value = '[]';
+     document.getElementById('task-status').value = 'not-started';
+     document.getElementById('task-blocked-reason').value = '';
+     document.getElementById('task-waiting-for').value = '';
+
+     // הסתרת שדות מותנים בסטטוס
+     document.getElementById('task-blocked-reason-container').style.display = 'none';
+     document.getElementById('task-waiting-for-container').style.display = 'none';
+
+     // איפוס תגיות
+     document.getElementById('task-tags-items').innerHTML = '';
+     document.getElementById('task-tag-input').value = '';
+
+     // מילוי תאריך היעד של הפרויקט כברירת מחדל אם קיים
+     if (currentProjectData && currentProjectData.deadline) {
+       document.getElementById('task-deadline').value = currentProjectData.deadline;
+     }
+
+     // הצגת בחירת אחראי רק בפרויקטים צוותיים
+     const assigneeSection = document.getElementById('task-assignee-section');
+     const assigneeSelect = document.getElementById('task-assignee');
+
+     if (currentProjectData && currentProjectData.type === 'team') {
+       // מילוי רשימת חברי הצוות
+       assigneeSelect.innerHTML = '<option value="">לא משויך</option>';
+
+       currentProjectMembers.forEach(member => {
+         const option = document.createElement('option');
+         option.value = member.userId;
+         option.textContent = member.displayName;
+         assigneeSelect.appendChild(option);
+       });
+
+       assigneeSection.classList.remove('hidden');
+     } else {
+       assigneeSection.classList.add('hidden');
+     }
+
+     // חלק בקשת העזרה
+     document.getElementById('task-help-section').classList.toggle('hidden', !(currentProjectData && currentProjectData.type === 'team'));
+     document.getElementById('task-help-request').checked = isHelpRequest;
+
+     document.getElementById('task-modal').style.display = 'block';
+   }
+
+   function showEditTaskModal(taskId, task) {
+     document.getElementById('task-modal-title').textContent = task.isHelpRequest ? 'עריכת בקשת עזרה' : 'עריכת משימה';
+     document.getElementById('task-name').value = task.name || '';
+     document.getElementById('task-description').value = task.description || '';
+     document.getElementById('task-deadline').value = task.deadline || '';
+     document.getElementById('task-id').value = taskId;
+     document.getElementById('task-project-id').value = task.projectId;
+     document.getElementById('task-status').value = task.status || 'not-started';
+     document.getElementById('task-blocked-reason').value = task.blockedReason || '';
+     document.getElementById('task-waiting-for').value = task.waitingFor || '';
+
+     // הצגת/הסתרת שדות מותנים בסטטוס
+     document.getElementById('task-blocked-reason-container').style.display = (task.status === 'blocked') ? 'block' : 'none';
+     document.getElementById('task-waiting-for-container').style.display = (task.status === 'waiting') ? 'block' : 'none';
+
+     // טעינת תגיות
+     loadTagsToInput(task.tags || []);
+
+     // הצגת בחירת אחראי רק בפרויקטים צוותיים
+     const assigneeSection = document.getElementById('task-assignee-section');
+     const assigneeSelect = document.getElementById('task-assignee');
+
+     if (currentProjectData && currentProjectData.type === 'team') {
+       // מילוי רשימת חברי הצוות
+       assigneeSelect.innerHTML = '<option value="">לא משויך</option>';
+
+       currentProjectMembers.forEach(member => {
+         const option = document.createElement('option');
+         option.value = member.userId;
+         option.textContent = member.displayName;
+
+         // בחירת האחראי הנוכחי
+         if (task.assigneeId && task.assigneeId === member.userId) {
+           option.selected = true;
+         }
+
+         assigneeSelect.appendChild(option);
+       });
+
+       assigneeSection.classList.remove('hidden');
+     } else {
+       assigneeSection.classList.add('hidden');
+     }
+
+     // חלק בקשת העזרה
+     document.getElementById('task-help-section').classList.toggle('hidden', !(currentProjectData && currentProjectData.type === 'team'));
+     document.getElementById('task-help-request').checked = task.isHelpRequest || false;
+
+     document.getElementById('task-modal').style.display = 'block';
+   }
+
+   function saveTask() {
+     const name = document.getElementById('task-name').value.trim();
+     const description = document.getElementById('task-description').value.trim();
+     const deadline = document.getElementById('task-deadline').value;
+     const taskId = document.getElementById('task-id').value;
+     const projectId = document.getElementById('task-project-id').value;
+     const tagsJson = document.getElementById('task-tags-hidden').value;
+     const tags = tagsJson ? JSON.parse(tagsJson) : [];
+     const status = document.getElementById('task-status').value;
+     const blockedReason = document.getElementById('task-blocked-reason').value.trim();
+     const waitingFor = document.getElementById('task-waiting-for').value.trim();
+
+     // מידע על בקשת העזרה
+     const isHelpRequest = document.getElementById('task-help-request').checked;
+
+     // מידע על האחראי (רק בפרויקטים צוותיים)
+     let assigneeId = null;
+     if (currentProjectData && currentProjectData.type === 'team') {
+       assigneeId = document.getElementById('task-assignee').value;
+
+       // אם זו בקשת עזרה ללא אחראי, לאפס את האחראי
+       if (isHelpRequest && !assigneeId) {
+         assigneeId = null;
+       }
+     }
+
+     if (!name) {
+       alert('אנא הזן שם למשימה');
+       return;
+     }
+
+     if (!projectId) {
+       alert('שגיאה: לא נבחר פרויקט');
+       return;
+     }
+
+     showLoader();
+
+     const taskData = {
+       name,
+       description,
+       deadline,
+       projectId,
+       tags,
+       isHelpRequest,
+       status,
+       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+     };
+
+     // הוספת מידע על מצב המשימה בהתאם לסטטוס
+     if (status === 'blocked' && blockedReason) {
+       taskData.blockedReason = blockedReason;
+     } else if (taskId) {
+       // מחיקת השדה אם המשימה לא תקועה - רק בעדכון משימה קיימת
+       taskData.blockedReason = firebase.firestore.FieldValue.delete();
+     }
+
+     if (status === 'waiting' && waitingFor) {
+       taskData.waitingFor = waitingFor;
+     } else if (taskId) {
+       // מחיקת השדה אם המשימה לא ממתינה - רק בעדכון משימה קיימת
+       taskData.waitingFor = firebase.firestore.FieldValue.delete();
+     }
+
+     // הוספת שדה האחראי רק בפרויקט צוותי
+     if (currentProjectData && currentProjectData.type === 'team') {
+       taskData.assigneeId = assigneeId || null;
+     }
+
+     let savePromise;
+
+     if (taskId) {
+       // עדכון משימה קיימת
+       savePromise = db.collection('tasks').doc(taskId).update(taskData);
+     } else {
+       // יצירת משימה חדשה - צריך להסיר את פעולות המחיקה
+       // במקרה של משימה חדשה, פשוט לא כוללים את השדות שלא רלוונטיים
+       if (taskData.blockedReason === firebase.firestore.FieldValue.delete()) {
+         delete taskData.blockedReason;
+       }
+
+       if (taskData.waitingFor === firebase.firestore.FieldValue.delete()) {
+         delete taskData.waitingFor;
+       }
+
+       taskData.createdBy = currentUser.uid;
+       taskData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+       savePromise = db.collection('tasks').add(taskData);
+     }
+
+     savePromise
+       .then(() => {
+         hideLoader();
+         document.getElementById('task-modal').style.display = 'none';
+
+         // עדכון הסינון לפי תגיות
+         updateProjectTaskTagsDropdown(projectId);
+
+         // טעינה מחדש של המשימות
+         if (currentTaskView === "list") {
+           loadTasks(projectId);
+         } else {
+           displayTasksByAssignee();
+         }
+       })
+       .catch(error => {
+         hideLoader();
+         console.error("Error saving task:", error);
+         alert('שגיאה בשמירת משימה: ' + error.message);
+       });
+   }
+
+   function deleteTask(taskId) {
+     showLoader();
+
+     db.collection('tasks').doc(taskId).delete()
+       .then(() => {
+         hideLoader();
+         if (currentTaskView === "list") {
+           loadTasks(currentProjectId);
+         } else {
+           displayTasksByAssignee();
+         }
+       })
+       .catch(error => {
+            hideLoader();
+            console.error("Error deleting task:", error);
+            alert('שגיאה במחיקת משימה');
+          });
+    }
+
+    // סגירת מודלים בלחיצה מחוץ לתוכן
+    window.addEventListener('click', function(e) {
+      if (e.target.classList.contains('modal')) {
+        e.target.style.display = 'none';
+      }
+    });
+
+    // הוספת כונני אבחון לזיהוי בעיות
+    console.log("Debugging mode enabled");
+
+    // מעקב אחר שגיאות
+    window.addEventListener('error', function(e) {
+      console.error("Global error:", e.message, e);
+    });
+
+    // האזנה לאירוע לחיצה על כפתור הוספת משתמש מורשה
+    document.addEventListener('DOMContentLoaded', function() {
+      // הוספת אירוע לכפתור הוספת משתמש מורשה
+      const addAuthorizedBtn = document.getElementById('add-authorized-btn');
+      if (addAuthorizedBtn) {
+        addAuthorizedBtn.addEventListener('click', function() {
+          const email = document.getElementById('authorized-email').value.trim();
+          if (email) {
+            addAuthorizedUserByEmail(email);
+          } else {
+            alert('אנא הזן אימייל תקין');
+          }
+        });
+      }
+    });
+    // הפעלת אתחול Firebase בטעינת הדף
+document.addEventListener('DOMContentLoaded', initializeFirebase);
+  </script>
+</body>
+</html>
