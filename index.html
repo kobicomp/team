@@ -1822,27 +1822,26 @@
     }
 
     function approveUserRegistration(userId, userEmail) {
-      if (confirm(`האם אתה בטוח שברצונך לאשר את המשתמש ${userEmail}?`)) {
-        showLoader();
-
-        db.collection('users').doc(userId).update({
-          status: 'approved',
-          approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          approvedBy: currentUser.uid
-        })
-        .then(() => {
-          hideLoader();
-          alert(`המשתמש ${userEmail} אושר בהצלחה`);
-          loadPendingRegistrations(); // רענון הרשימה
-        })
-        .catch(error => {
-          hideLoader();
-          console.error("Error approving user:", error);
-          alert('שגיאה באישור המשתמש: ' + error.message);
-        });
-      }
+    if (confirm(`האם אתה בטוח שברצונך לאשר את המשתמש ${userEmail}?`)) {
+      showLoader();
+      
+      db.collection('users').doc(userId).update({
+        status: 'approved',         // כאן מתעדכן הסטטוס ל-'approved'
+        approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        approvedBy: currentUser.uid
+      })
+      .then(() => {
+        hideLoader();
+        alert(`המשתמש ${userEmail} אושר בהצלחה`);
+        loadPendingRegistrations(); // רענון הרשימה
+      })
+      .catch(error => {
+        hideLoader();
+        console.error("Error approving user:", error);
+        alert('שגיאה באישור המשתמש: ' + error.message);
+      });
     }
-
+  }
     function rejectUserRegistration(userId, userEmail) {
       if (confirm(`האם אתה בטוח שברצונך לדחות את המשתמש ${userEmail}?`)) {
         showLoader();
