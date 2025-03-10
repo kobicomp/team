@@ -2271,7 +2271,7 @@ function loadPendingRegistrations() {
     function approveUserRegistration(userId, userEmail) {
       if (confirm(`האם אתה בטוח שברצונך לאשר את המשתמש ${userEmail}?`)) {
         showLoader();
-        
+
         db.collection('users').doc(userId).update({
           status: 'approved',
           approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2289,11 +2289,11 @@ function loadPendingRegistrations() {
         });
       }
     }
-    
+
     function rejectUserRegistration(userId, userEmail) {
       if (confirm(`האם אתה בטוח שברצונך לדחות את המשתמש ${userEmail}?`)) {
         showLoader();
-    
+
         db.collection('users').doc(userId).update({
           status: 'rejected',
           rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2311,6 +2311,87 @@ function loadPendingRegistrations() {
         });
       }
     }
+    // הצגת הפרויקטים בממשק
+function displayProjects(projects) {
+  const projectsList = document.getElementById('projects-list');
+
+  if (projects.length === 0) {
+    projectsList.innerHTML = '<div style="text-align: center; padding: 20px;">אין פרויקטים. לחץ על "פרויקט חדש" כדי להתחיל.</div>';
+    return;
+  }
+
+  projectsList.innerHTML = '';
+
+  projects.forEach(project => {
+    const { id, data, role, type } = project;
+
+    // הצגת תאריך בפורמט מקומי
+    let deadlineText = 'אין תאריך יעד';
+    let isOverdue = false;
+
+    if (data.deadline) {
+      const date = new Date(data.deadline);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      deadlineText = date.toLocaleDateString('he-IL');
+
+      if (date < today) {
+        isOverdue = true;
+      }
+    }
+
+    // יצירת כרטיס פרויקט
+    const projectCard = document.createElement('div');
+    projectCard.className = 'card project-card';
+    projectCard.style.borderRight = `5px solid ${isOverdue ? 'var(--danger)' : 'var(--primary)'}`;
+
+    // אינדיקטור סוג פרויקט
+    const typeIndicator = document.createElement('div');
+    typeIndicator.className = `project-type-indicator ${data.type === 'personal' ? 'personal-project' : 'team-project'}`;
+    typeIndicator.textContent = data.type === 'personal' ? 'אישי' : 'צוותי';
+    projectCard.appendChild(typeIndicator);
+
+    // תוכן הכרטיס
+    const cardContent = document.createElement('div');
+    cardContent.className = 'project-card-content';
+    cardContent.innerHTML = `
+      <h3 class="project-card-title">${data.name}</h3>
+      <div class="project-card-description">${data.description || 'אין תיאור'}</div>
+      <div class="project-card-footer">
+        <div>
+          <div><i class="fas fa-calendar-alt"></i> ${deadlineText}</div>
+          ${role === 'owner' ? '<span class="badge badge-owner">מנהל</span>' : '<span class="badge badge-member">חבר</span>'}
+        </div>
+        ${role === 'owner' ?
+          `<button class="btn btn-sm btn-danger delete-project" data-id="${id}">
+            <i class="fas fa-trash"></i>
+           </button>` : ''}
+      </div>
+    `;
+    projectCard.appendChild(cardContent);
+
+    // אירוע לחיצה על כרטיס פרויקט
+    projectCard.addEventListener('click', (e) => {
+      if (!e.target.closest('.delete-project')) {
+        openProject(id, role);
+      }
+    });
+
+    // אירוע מחיקת פרויקט
+    const deleteButton = projectCard.querySelector('.delete-project');
+    if (deleteButton) {
+      deleteButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('האם אתה בטוח שברצונך למחוק פרויקט זה?')) {
+          deleteProject(id);
+        }
+      });
+    }
+
+    projectsList.appendChild(projectCard);
+  });
+}
     // וידוא שהמשתמש רשום במערכת
     function ensureUserIsRegistered(email, uid, isAdmin = false) {
       // בדיקה אם המשתמש כבר רשום במערכת
