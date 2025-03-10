@@ -2786,25 +2786,12 @@ function displayProjects(projects) {
     }
 
     // חדש - פונקציות היסטוריית פעילות
-    function logActivity(action, objectId, details = null) {
-      if (!currentUser) return;
-
-      const activityData = {
-        userId: currentUser.uid,
-        userEmail: currentUser.email,
-        displayName: currentUser.displayName || currentUser.email.split('@')[0],
-        action: action,
-        objectId: objectId,
-        details: details,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      db.collection('activity_log').add(activityData)
-        .catch(error => {
-          console.error("Error logging activity:", error);
-        });
-    }
-
+    // פונקציה לתיעוד פעילות - מנוטרלת זמנית
+  function logActivity(action, objectId, details = null) {
+    // הפונקציה מנוטרלת זמנית עד להגדרת הרשאות מתאימות
+    console.debug('Activity logging disabled:', action, objectId, details);
+    return Promise.resolve(); // מחזירה Promise שמסתיים מיד כדי לשמור על תאימות
+  }
     function loadActivityLog() {
       const activityLog = document.getElementById('activity-log');
       activityLog.innerHTML = '<li class="activity-item">טוען היסטוריה...</li>';
