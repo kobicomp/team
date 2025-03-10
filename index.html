@@ -2168,6 +2168,84 @@
             }
           }
         });
+        // פונקציה להצגת מודל בקשות הרשמה ממתינות
+function showPendingRegistrationsModal() {
+  // בדוק הרשאות מנהל
+  if (!currentUser || !currentUser.isAdmin) {
+    alert('רק למנהל המערכת יש הרשאה לניהול בקשות הרשמה');
+    return;
+  }
+
+  // הצג את המודל
+  document.getElementById('pending-registrations-modal').style.display = 'block';
+
+  // טען את רשימת בקשות ההרשמה הממתינות
+  loadPendingRegistrations();
+}
+
+// פונקציה לטעינת בקשות הרשמה ממתינות
+function loadPendingRegistrations() {
+  const pendingList = document.getElementById('pending-registrations-list');
+  pendingList.innerHTML = 'טוען בקשות הרשמה...';
+
+  db.collection('users')
+    .where('status', '==', 'pending')
+    .get()
+    .then(snapshot => {
+      if (snapshot.empty) {
+        pendingList.innerHTML = '<div>אין בקשות הרשמה ממתינות.</div>';
+        return;
+      }
+
+      let pendingHTML = '';
+
+      snapshot.forEach(doc => {
+        const userData = doc.data();
+
+        pendingHTML += `
+          <div class="user-management-item">
+            <div>
+              <strong>${userData.email}</strong>
+              <div style="font-size: 12px; color: #666;">
+                נרשם: ${userData.createdAt ? new Date(userData.createdAt.toDate()).toLocaleString() : 'לא ידוע'}
+              </div>
+            </div>
+            <div>
+              <button class="btn btn-sm btn-success approve-user-btn" data-id="${doc.id}" data-email="${userData.email}">
+                <i class="fas fa-check"></i> אשר
+              </button>
+              <button class="btn btn-sm btn-danger reject-user-btn" data-id="${doc.id}" data-email="${userData.email}">
+                <i class="fas fa-times"></i> דחה
+              </button>
+            </div>
+          </div>
+        `;
+      });
+
+      pendingList.innerHTML = pendingHTML;
+
+      // הוסף מאזינים לכפתורים
+      pendingList.querySelectorAll('.approve-user-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const userId = this.getAttribute('data-id');
+          const userEmail = this.getAttribute('data-email');
+          approveUserRegistration(userId, userEmail);
+        });
+      });
+
+      pendingList.querySelectorAll('.reject-user-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const userId = this.getAttribute('data-id');
+          const userEmail = this.getAttribute('data-email');
+          rejectUserRegistration(userId, userEmail);
+        });
+      });
+    })
+    .catch(error => {
+      console.error("Error loading pending registrations:", error);
+      pendingList.innerHTML = '<div style="color: var(--danger);">שגיאה בטעינת בקשות הרשמה: ' + error.message + '</div>';
+    });
+}
         // פונקציה לעדכון תפריט המשתמש בהתאם לסוג המשתמש
     function updateUserMenuForAdmin() {
       if (currentUser && currentUser.isAdmin) {
@@ -2190,7 +2268,49 @@
         }
       }
     }
-
+    function approveUserRegistration(userId, userEmail) {
+      if (confirm(`האם אתה בטוח שברצונך לאשר את המשתמש ${userEmail}?`)) {
+        showLoader();
+        
+        db.collection('users').doc(userId).update({
+          status: 'approved',
+          approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          approvedBy: currentUser.uid
+        })
+        .then(() => {
+          hideLoader();
+          alert(`המשתמש ${userEmail} אושר בהצלחה`);
+          loadPendingRegistrations(); // רענון הרשימה
+        })
+        .catch(error => {
+          hideLoader();
+          console.error("Error approving user:", error);
+          alert('שגיאה באישור המשתמש: ' + error.message);
+        });
+      }
+    }
+    
+    function rejectUserRegistration(userId, userEmail) {
+      if (confirm(`האם אתה בטוח שברצונך לדחות את המשתמש ${userEmail}?`)) {
+        showLoader();
+    
+        db.collection('users').doc(userId).update({
+          status: 'rejected',
+          rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          rejectedBy: currentUser.uid
+        })
+        .then(() => {
+          hideLoader();
+          alert(`המשתמש ${userEmail} נדחה`);
+          loadPendingRegistrations(); // רענון הרשימה
+        })
+        .catch(error => {
+          hideLoader();
+          console.error("Error rejecting user:", error);
+          alert('שגיאה בדחיית המשתמש: ' + error.message);
+        });
+      }
+    }
     // וידוא שהמשתמש רשום במערכת
     function ensureUserIsRegistered(email, uid, isAdmin = false) {
       // בדיקה אם המשתמש כבר רשום במערכת
