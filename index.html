@@ -3709,141 +3709,140 @@ function displayProjects(projects) {
     }
 
     function createDashboardTaskElement(task) {
-      // מצא את הפרויקט המשויך
-      const project = allProjects.find(p => p.id === task.data.projectId) || { data: { name: 'פרויקט לא ידוע' } };
+  // מצא את הפרויקט המשויך
+  const project = allProjects.find(p => p.id === task.data.projectId) || { data: { name: 'פרויקט לא ידוע' } };
 
-      // יצירת אלמנט המשימה
-      const taskElement = document.createElement('div');
-      taskElement.className = `task-item ${task.data.status === 'completed' ? 'completed' : ''} ${task.data.isHelpRequest ? 'help-request' : ''}`;
+  // יצירת אלמנט המשימה
+  const taskElement = document.createElement('div');
+  taskElement.className = `task-item ${task.data.status === 'completed' ? 'completed' : ''} ${task.data.isHelpRequest ? 'help-request' : ''}`;
 
-      // בדיקת תאריך יעד חלף
-      let dueDateClass = '';
-      let dueDateText = 'אין תאריך יעד';
+  // בדיקת תאריך יעד חלף
+  let dueDateClass = '';
+  let dueDateText = 'אין תאריך יעד';
 
-      if (task.data.deadline) {
-        const dueDate = new Date(task.data.deadline);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+  if (task.data.deadline) {
+    const dueDate = new Date(task.data.deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-        if (dueDate < today && task.data.status !== 'completed') {
-          dueDateClass = 'overdue';
-        }
-
-        dueDateText = dueDate.toLocaleDateString('he-IL');
-      }
-
-      // יצירת תגיות
-      let tagsHtml = '';
-
-      if (task.data.tags && task.data.tags.length > 0) {
-        tagsHtml = '<div class="tags-container">';
-
-        task.data.tags.forEach(tag => {
-          const tagClass = getTagColorClass(tag);
-          tagsHtml += '<span class="tag ' + tagClass + '">' + tag + '</span>';
-        });
-
-        tagsHtml += '</div>';
-      }
-
-      // קבלת תיאור סטטוס משימה
-      const statusClass = `status-${task.data.status || 'not-started'}`;
-      const statusText = statusLabels[task.data.status || 'not-started'];
-      const statusHtml = `<span class="task-status ${statusClass}">${statusText}</span>`;
-
-      // בניית תוכן ה-HTML
-      let innerHtml = '';
-
-      // חלק ראשון - תוכן המשימה
-      innerHtml += '<div style="display: flex; align-items: flex-start;">';
-      innerHtml += '<div class="task-content">';
-      innerHtml += '<h4 class="task-title">' + task.data.name + '</h4>';
-      innerHtml += '<div class="task-description">' + (task.data.description || 'אין תיאור') + '</div>';
-      innerHtml += '<div class="task-meta">';
-      innerHtml += '<span><i class="fas fa-briefcase"></i> ' + (project.data ? project.data.name : 'פרויקט לא ידוע') + '</span>';
-      innerHtml += '<span class="task-due-date ' + dueDateClass + '"><i class="fas fa-calendar-alt"></i> ' + dueDateText + '</span>';
-      innerHtml += statusHtml;
-
-      if (task.data.isHelpRequest) {
-        innerHtml += '<span class="badge" style="background-color: var(--warning); color: white;"><i class="fas fa-hands-helping"></i> בקשת עזרה</span>';
-      }
-
-      // מידע על האחראי למשימה (רק בפרויקטים צוותיים)
-      if (task.data.assigneeId && project.data.type === 'team') {
-        // חיפוש אחראי ברשימת חברי הצוות של הפרויקט
-        const projectMembers = currentProjectMembers.filter(member => member.userId === task.data.assigneeId);
-        let assigneeName = 'לא ידוע';
-        let assigneeInitial = '?';
-
-        if (projectMembers.length > 0) {
-          assigneeName = projectMembers[0].displayName;
-          assigneeInitial = assigneeName.charAt(0).toUpperCase();
-        } else if (task.data.assigneeId === currentUser.uid) {
-          assigneeName = currentUser.displayName;
-          assigneeInitial = assigneeName.charAt(0).toUpperCase();
-        }
-
-        innerHtml += '<span class="task-assignee">';
-        innerHtml += `<span class="assignee-avatar">${assigneeInitial}</span>`;
-        innerHtml += `<span>${assigneeName}</span>`;
-        innerHtml += '</span>';
-      }
-
-      innerHtml += '</div>'; // סגירת task-meta
-      innerHtml += tagsHtml;
-      innerHtml += '</div>'; // סגירת task-content
-      innerHtml += '</div>'; // סגירת div עליון
-
-      // חלק שני - כפתורי פעולה
-      innerHtml += '<div class="task-actions">';
-      innerHtml += '<button class="btn btn-sm chat-task" data-id="' + task.id + '" data-name="' + task.data.name + '">';
-      innerHtml += '<i class="fas fa-comments"></i>';
-      innerHtml += '</button>';
-      innerHtml += '<button class="btn btn-sm view-task" data-project-id="' + task.data.projectId + '" data-task-id="' + task.id + '">';
-      innerHtml += '<i class="fas fa-eye"></i>';
-      innerHtml += '</button>';
-
-      if (task.data.isHelpRequest && !task.data.assigneeId) {
-        innerHtml += '<button class="btn btn-sm btn-warning take-help-task" data-id="' + task.id + '">';
-        innerHtml += '<i class="fas fa-hand-holding-heart"></i> קח משימה';
-        innerHtml += '</button>';
-      }
-
-      innerHtml += '</div>'; // סגירת task-actions
-
-      // הוספת ה-HTML לאלמנט
-      taskElement.innerHTML = innerHtml;
-
-      // הוספת אירועים
-      const viewButton = taskElement.querySelector('.view-task');
-      if (viewButton) {
-        viewButton.addEventListener('click', function() {
-          const projectId = this.getAttribute('data-project-id');
-          const taskId = this.getAttribute('data-task-id');
-          openProject(projectId, null, taskId);
-        });
-      }
-
-      const chatButton = taskElement.querySelector('.chat-task');
-      if (chatButton) {
-        chatButton.addEventListener('click', function() {
-          const taskId = this.getAttribute('data-id');
-          const taskName = this.getAttribute('data-name');
-          showTaskChat(taskId, taskName);
-        });
-      }
-
-      const takeHelpButton = taskElement.querySelector('.take-help-task');
-      if (takeHelpButton) {
-        takeHelpButton.addEventListener('click', function() {
-          const taskId = this.getAttribute('data-id');
-          takeHelpTask(taskId);
-        });
-      }
-
-      return taskElement;
+    if (dueDate < today && task.data.status !== 'completed') {
+      dueDateClass = 'overdue';
     }
 
+    dueDateText = dueDate.toLocaleDateString('he-IL');
+  }
+
+  // יצירת תגיות
+  let tagsHtml = '';
+
+  if (task.data.tags && task.data.tags.length > 0) {
+    tagsHtml = '<div class="tags-container">';
+
+    task.data.tags.forEach(tag => {
+      const tagClass = getTagColorClass(tag);
+      tagsHtml += '<span class="tag ' + tagClass + '">' + tag + '</span>';
+    });
+
+    tagsHtml += '</div>';
+  }
+
+  // קבלת תיאור סטטוס משימה
+  const statusClass = `status-${task.data.status || 'not-started'}`;
+  const statusText = statusLabels[task.data.status || 'not-started'];
+  const statusHtml = `<span class="task-status ${statusClass}">${statusText}</span>`;
+
+  // בניית תוכן ה-HTML
+  let innerHtml = '';
+
+  // חלק ראשון - תוכן המשימה
+  innerHtml += '<div style="display: flex; align-items: flex-start;">';
+  innerHtml += '<div class="task-content">';
+  innerHtml += '<h4 class="task-title">' + task.data.name + '</h4>';
+  innerHtml += '<div class="task-description">' + (task.data.description || 'אין תיאור') + '</div>';
+  innerHtml += '<div class="task-meta">';
+  innerHtml += '<span><i class="fas fa-briefcase"></i> ' + (project.data ? project.data.name : 'פרויקט לא ידוע') + '</span>';
+  innerHtml += '<span class="task-due-date ' + dueDateClass + '"><i class="fas fa-calendar-alt"></i> ' + dueDateText + '</span>';
+  innerHtml += statusHtml;
+
+  if (task.data.isHelpRequest) {
+    innerHtml += '<span class="badge" style="background-color: var(--warning); color: white;"><i class="fas fa-hands-helping"></i> בקשת עזרה</span>';
+  }
+
+  // מידע על האחראי למשימה (רק בפרויקטים צוותיים)
+  if (task.data.assigneeId && project.data.type === 'team') {
+    // חיפוש אחראי ברשימת חברי הצוות של הפרויקט
+    const projectMembers = currentProjectMembers.filter(member => member.userId === task.data.assigneeId);
+    let assigneeName = 'לא ידוע';
+    let assigneeInitial = '?';
+
+    if (projectMembers.length > 0) {
+      assigneeName = projectMembers[0].displayName || projectMembers[0].email || 'משתמש';
+      assigneeInitial = (assigneeName.charAt(0) || '?').toUpperCase();
+    } else if (task.data.assigneeId === currentUser.uid) {
+      assigneeName = currentUser.displayName || currentUser.email || 'משתמש';
+      assigneeInitial = (assigneeName.charAt(0) || '?').toUpperCase();
+    }
+
+    innerHtml += '<span class="task-assignee">';
+    innerHtml += `<span class="assignee-avatar">${assigneeInitial}</span>`;
+    innerHtml += `<span>${assigneeName}</span>`;
+    innerHtml += '</span>';
+  }
+
+  innerHtml += '</div>'; // סגירת task-meta
+  innerHtml += tagsHtml;
+  innerHtml += '</div>'; // סגירת task-content
+  innerHtml += '</div>'; // סגירת div עליון
+
+  // חלק שני - כפתורי פעולה
+  innerHtml += '<div class="task-actions">';
+  innerHtml += '<button class="btn btn-sm chat-task" data-id="' + task.id + '" data-name="' + task.data.name + '">';
+  innerHtml += '<i class="fas fa-comments"></i>';
+  innerHtml += '</button>';
+  innerHtml += '<button class="btn btn-sm view-task" data-project-id="' + task.data.projectId + '" data-task-id="' + task.id + '">';
+  innerHtml += '<i class="fas fa-eye"></i>';
+  innerHtml += '</button>';
+
+  if (task.data.isHelpRequest && !task.data.assigneeId) {
+    innerHtml += '<button class="btn btn-sm btn-warning take-help-task" data-id="' + task.id + '">';
+    innerHtml += '<i class="fas fa-hand-holding-heart"></i> קח משימה';
+    innerHtml += '</button>';
+  }
+
+  innerHtml += '</div>'; // סגירת task-actions
+
+  // הוספת ה-HTML לאלמנט
+  taskElement.innerHTML = innerHtml;
+
+  // הוספת אירועים
+  const chatButton = taskElement.querySelector('.chat-task');
+  if (chatButton) {
+    chatButton.addEventListener('click', function() {
+      const taskId = this.getAttribute('data-id');
+      const taskName = this.getAttribute('data-name');
+      showTaskChat(taskId, taskName);
+    });
+  }
+
+  const viewButton = taskElement.querySelector('.view-task');
+  if (viewButton) {
+    viewButton.addEventListener('click', function() {
+      const projectId = this.getAttribute('data-project-id');
+      const taskId = this.getAttribute('data-task-id');
+      openProject(projectId, null, taskId);
+    });
+  }
+
+  const takeHelpButton = taskElement.querySelector('.take-help-task');
+  if (takeHelpButton) {
+    takeHelpButton.addEventListener('click', function() {
+      const taskId = this.getAttribute('data-id');
+      takeHelpTask(taskId);
+    });
+  }
+
+  return taskElement;
+}
     function getTagColorClass(tag) {
       // מתן צבע לתגית לפי השם
       const tagLower = tag.toLowerCase();
