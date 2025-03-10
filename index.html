@@ -3165,7 +3165,8 @@
           });
 
           // רישום פעילות
-          logActivity('שלח הודעה בצ'אט', taskId, `שלח הודעה בצ'אט המשימה`);
+          // רישום פעילות
+  logActivity('שלח הודעה בצאט', taskId, 'שלח הודעה בצאט המשימה');
         })
         .catch(error => {
           console.error("Error sending message:", error);
