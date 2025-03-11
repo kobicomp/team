@@ -2748,40 +2748,57 @@
   
       // פונקציה לטעינת תצורת Firebase מהשרת
       function initializeFirebase() {
-        showLoader();
+    console.log('מתחיל אתחול Firebase...');
+    showLoader();
   
-        fetch('/api/firebase-config')
-          .then(response => {
-            if (!response.ok) {
-              throw new Error('בעיה בטעינת תצורת Firebase: ' + response.status);
-            }
-            return response.json();
-          })
-          .then(data => {
-            console.log('תצורת Firebase נטענה בהצלחה');
+    // בדיקה אם כבר אותחל
+    if (firebase.apps && firebase.apps.length > 0) {
+      console.log('Firebase כבר אותחל, משתמש בחיבור קיים');
+      auth = firebase.auth();
+      db = firebase.firestore();
+      storage = firebase.storage();
+      startAuthListener();
+      return;
+    }
   
-            // שמירת אימייל האדמין מהתשובה
-            adminEmail = data.adminEmail;
+    fetch('/api/firebase-config')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('בעיה בטעינת תצורת Firebase: ' + response.status);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('תצורת Firebase נטענה בהצלחה');
   
-            // אתחול Firebase עם תצורה שהתקבלה
-            firebase.initializeApp(data.firebaseConfig);
+        // שמירת אימייל האדמין מהתשובה
+        adminEmail = data.adminEmail;
   
-            // קיצורי דרך לשירותים
-            auth = firebase.auth();
-            db = firebase.firestore();
-            storage = firebase.storage();
+        // אתחול Firebase עם תצורה שהתקבלה
+        try {
+          firebase.initializeApp(data.firebaseConfig);
   
-            // מעקב אחר התחברות המשתמש
-            startAuthListener();
-          })
-          .catch(error => {
-            console.error('שגיאה בטעינת תצורת Firebase:', error);
-            document.getElementById('auth-error').textContent = 'שגיאה בטעינת הגדרות האפליקציה: ' + error.message;
-            document.getElementById('auth-error').classList.remove('hidden');
-            hideLoader();
-          });
-      }
+          // קיצורי דרך לשירותים
+          auth = firebase.auth();
+          db = firebase.firestore();
+          storage = firebase.storage();
   
+          // מעקב אחר התחברות המשתמש
+          startAuthListener();
+        } catch (error) {
+          console.error('שגיאה באתחול Firebase:', error);
+          document.getElementById('auth-error').textContent = 'שגיאה באתחול המערכת: ' + error.message;
+          document.getElementById('auth-error').classList.remove('hidden');
+          hideLoader();
+        }
+      })
+      .catch(error => {
+        console.error('שגיאה בטעינת תצורת Firebase:', error);
+        document.getElementById('auth-error').textContent = 'שגיאה בטעינת הגדרות האפליקציה: ' + error.message;
+        document.getElementById('auth-error').classList.remove('hidden');
+        hideLoader();
+      });
+  }
       // פונקציה למעקב אחר מצב התחברות המשתמש
       function startAuthListener() {
         auth.onAuthStateChanged(user => {
