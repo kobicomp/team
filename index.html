@@ -4647,35 +4647,119 @@ function displayProjects(projects) {
       charts.projectProgress.destroy();
     }
     
-    // המשך הקוד הקיים...
+    // חשוב: קבלת ההקשר של הקנבס - זה היה חסר
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.error("לא ניתן לקבל הקשר 2d מהקנבס");
+      return;
+    }
   
-    // עדכון באפשרויות הגרף
-    charts.projectProgress = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        // נתונים כמו קודם...
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true, // נשמר יחס גובה-רוחב
-        plugins: {
-          legend: {
-            position: 'right', // מעביר את המקרא לצד ימין לחיסכון בגובה
-            labels: {
-              boxWidth: 12, // מקטין את תיבות הצבע במקרא
-              padding: 10 // מרווח בין פריטי המקרא
+    // טעינת המשימות של הפרויקט
+    db.collection('tasks')
+      .where('projectId', '==', projectId)
+      .get()
+      .then(snapshot => {
+        if (snapshot.empty) {
+          // אין משימות, מציג גרף ריק
+          charts.projectProgress = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: ['אין משימות'],
+              datasets: [{
+                data: [1],
+                backgroundColor: ['#e9ecef']
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: true, // נשמר יחס גובה-רוחב
+              plugins: {
+                legend: {
+                  position: 'right', // מעביר את המקרא לצד ימין לחיסכון בגובה
+                  labels: {
+                    boxWidth: 12, // מקטין את תיבות הצבע במקרא
+                    padding: 10 // מרווח בין פריטי המקרא
+                  }
+                }
+              },
+              cutout: '60%' // אחוז החיתוך הפנימי
             }
-          },
-          tooltip: {
-            bodyFont: {
-              size: 12 // גודל טקסט בטולטיפ
-            }
+          });
+          return;
+        }
+  
+        // חישוב סטטיסטיקות של המשימות
+        const statuses = {
+          'not-started': 0,
+          'in-progress': 0,
+          'waiting': 0,
+          'blocked': 0,
+          'completed': 0
+        };
+  
+        snapshot.forEach(doc => {
+          const task = doc.data();
+          const status = task.status || 'not-started';
+  
+          if (statuses[status] !== undefined) {
+            statuses[status]++;
           }
-        },
-        // הגדרת גודל פנימי של העוגה
-        cutout: '60%' // אחוז החיתוך הפנימי (גדול יותר = טבעת דקה יותר)
-      }
-    });
+        });
+  
+        // יצירת הגרף
+        charts.projectProgress = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: [
+              'טרם התחילה',
+              'בתהליך',
+              'ממתינה',
+              'תקועה',
+              'הושלמה'
+            ],
+            datasets: [{
+              data: [
+                statuses['not-started'],
+                statuses['in-progress'],
+                statuses['waiting'],
+                statuses['blocked'],
+                statuses['completed']
+              ],
+              backgroundColor: [
+                '#e9ecef',  // טרם התחילה
+                '#4895ef',  // בתהליך
+                '#ffc107',  // ממתינה
+                '#dc3545',  // תקועה
+                '#28a745'   // הושלמה
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true, // נשמר יחס גובה-רוחב
+            plugins: {
+              legend: {
+                position: 'right', // מעביר את המקרא לצד ימין לחיסכון בגובה
+                labels: {
+                  boxWidth: 12, // מקטין את תיבות הצבע במקרא
+                  padding: 10 // מרווח בין פריטי המקרא
+                }
+              },
+              tooltip: {
+                bodyFont: {
+                  size: 12 // גודל טקסט בטולטיפ
+                }
+              }
+            },
+            // הגדרת גודל פנימי של העוגה
+            cutout: '60%' // אחוז החיתוך הפנימי (גדול יותר = טבעת דקה יותר)
+          }
+        });
+      })
+      .catch(error => {
+        console.error('Error loading project progress chart:', error);
+      });
   }
     function updateProjectTaskTagsDropdown(projectId) {
       // טעינת תגיות המשימות של הפרויקט הנוכחי
