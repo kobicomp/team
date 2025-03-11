@@ -1036,7 +1036,21 @@
       cursor: pointer;
       color: var(--danger);
     }
-
+    .user-search-result {
+      transition: all 0.2s ease;
+    }
+    
+    .user-search-result:hover {
+      background-color: #e8e8e8 !important;
+    }
+    
+    .user-search-result.selected {
+      background-color: #e1f5fe !important;
+    }
+    
+    .user-search-result.already-member {
+      cursor: not-allowed !important;
+    }
     /* חדש - צ'אט משימה */
     .task-chat {
       max-height: 300px;
@@ -1513,14 +1527,17 @@
         <h3 class="modal-title">הוספת חבר צוות לפרויקט</h3>
         <span class="modal-close">&times;</span>
       </div>
-
+  
       <div class="form-group">
-        <label for="member-email">אימייל:</label>
-        <input type="email" id="member-email" placeholder="הזן אימייל של חבר צוות">
+        <label id="member-email-label" for="member-email">חיפוש (אימייל או שם):</label>
+        <input type="text" id="member-email" placeholder="הזן אימייל או שם של חבר צוות">
+        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+          הזן לפחות 3 תווים כדי להתחיל בחיפוש
+        </div>
       </div>
-
+  
       <div id="member-search-results"></div>
-
+  
       <div class="modal-footer">
         <button id="add-member-confirm-btn" class="btn btn-success" disabled>הוסף לפרויקט</button>
         <button id="cancel-member-btn" class="btn btn-outline">ביטול</button>
@@ -1753,15 +1770,15 @@
       if (user) {
         // המשתמש מחובר - נבדוק אם הוא מורשה
         showLoader();
-  
+
         // בדיקת סטטוס המשתמש
         db.collection('users').doc(user.uid).get()
           .then(doc => {
             let userData;
-            
+
             if (doc.exists) {
               userData = doc.data();
-              
+
               // לוגיקה מתוקנת לניהול סטטוס המשתמש
               if (user.email === adminEmail || (userData && userData.isAdmin)) {
                 // המשתמש הוא המנהל או משתמש עם הרשאות מנהל
@@ -1771,16 +1788,16 @@
                   displayName: userData.displayName || user.email.split('@')[0],
                   isAdmin: true
                 };
-  
+
                 // עדכון ממשק המשתמש
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('app-section').classList.remove('hidden');
                 document.getElementById('user-email').textContent = currentUser.displayName;
                 document.getElementById('user-avatar').textContent = (currentUser.displayName.charAt(0) || "?").toUpperCase();
-  
+
                 // עדכון תפריט למנהל (בתיקון יש לבדוק אם הפריט כבר קיים)
                 updateUserMenuForAdmin();
-  
+
                 // טעינת הפרויקטים של המשתמש
                 loadProjects();
                 hideLoader();
@@ -1792,13 +1809,13 @@
                   displayName: userData.displayName || user.email.split('@')[0],
                   isAdmin: false
                 };
-  
+
                 // עדכון ממשק המשתמש
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('app-section').classList.remove('hidden');
                 document.getElementById('user-email').textContent = currentUser.displayName;
                 document.getElementById('user-avatar').textContent = (currentUser.displayName.charAt(0) || "?").toUpperCase();
-  
+
                 // טעינת הפרויקטים של המשתמש
                 loadProjects();
                 hideLoader();
@@ -2027,7 +2044,16 @@
         });
 
         // אירועי לחיצה - חיפוש חברי צוות לפי הקלדה
-        document.getElementById('member-email').addEventListener('input', searchUserByEmail);
+        // עדכון האזנה לאירועי חיפוש
+  document.getElementById('member-email').addEventListener('input', function() {
+    // רק אם יש לפחות 3 תווים, בצע חיפוש
+    if (this.value.trim().length >= 3) {
+      searchUserByEmailOrName();
+    } else {
+      document.getElementById('member-search-results').innerHTML = '<div>הזן לפחות 3 תווים לחיפוש</div>';
+      document.getElementById('add-member-confirm-btn').disabled = true;
+    }
+  });
 
         // אירועי לחיצה - משימות
         document.getElementById('add-task-btn').addEventListener('click', () => showAddTaskModal(false));
@@ -2273,14 +2299,14 @@ function loadPendingRegistrations() {
               // הפריט כבר קיים, לא צריך להוסיף שוב
               return;
             }
-            
+
             // הוסף ניהול בקשות הרשמה
             const pendingRequestsItem = document.createElement('a');
             pendingRequestsItem.href = '#';
             pendingRequestsItem.className = 'user-menu-item admin-menu-item';
             pendingRequestsItem.textContent = 'בקשות הרשמה ממתינות';
             pendingRequestsItem.addEventListener('click', showPendingRegistrationsModal);
-      
+
             // הוסף לתפריט לפני פריט ההתנתקות
             const logoutItem = userMenu.querySelector('#logout-btn');
             if (logoutItem) {
@@ -2294,7 +2320,7 @@ function loadPendingRegistrations() {
       function approveUserRegistration(userId, userEmail) {
       if (confirm(`האם אתה בטוח שברצונך לאשר את המשתמש ${userEmail}?`)) {
         showLoader();
-    
+
         db.collection('users').doc(userId).update({
           status: 'approved',
           approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2312,11 +2338,11 @@ function loadPendingRegistrations() {
         });
       }
     }
-    
+
     function rejectUserRegistration(userId, userEmail) {
       if (confirm(`האם אתה בטוח שברצונך לדחות את המשתמש ${userEmail}?`)) {
         showLoader();
-    
+
         db.collection('users').doc(userId).update({
           status: 'rejected',
           rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -3942,117 +3968,176 @@ function displayProjects(projects) {
     }
 
     // חיפוש משתמש לפי אימייל
-    function searchUserByEmail() {
-      const email = document.getElementById('member-email').value.trim().toLowerCase();
-      const resultsDiv = document.getElementById('member-search-results');
-
-      if (!email) {
-        resultsDiv.innerHTML = '';
-        return;
-      }
-
-      resultsDiv.innerHTML = '<div class="text-center">מחפש משתמש...</div>';
-
-      db.collection('users')
-        .where('email', '==', email)
-        .limit(1)
-        .get()
-        .then(snapshot => {
-        if (snapshot.empty) {
+    // חיפוש משתמש לפי אימייל או שם משתמש
+  function searchUserByEmailOrName() {
+    const searchTerm = document.getElementById('member-email').value.trim();
+    const resultsDiv = document.getElementById('member-search-results');
+  
+    if (!searchTerm || searchTerm.length < 3) {
+      resultsDiv.innerHTML = '<div>הזן לפחות 3 תווים לחיפוש</div>';
+      return;
+    }
+  
+    resultsDiv.innerHTML = '<div class="text-center">מחפש משתמש...</div>';
+  
+    // שינוי שם האלמנט בממשק
+    document.getElementById('member-email-label').textContent = 'חיפוש (אימייל או שם):';
+  
+    // חיפוש לפי אימייל מדויק
+    const emailQuery = db.collection('users')
+      .where('email', '==', searchTerm.toLowerCase())
+      .where('status', '==', 'approved')  // רק משתמשים מאושרים
+      .limit(5);
+    
+    // חיפוש לפי שם משתמש
+    const nameQuery = db.collection('users')
+      .where('displayName', '>=', searchTerm)
+      .where('displayName', '<=', searchTerm + '\uf8ff') // טריק לחיפוש prefix
+      .where('status', '==', 'approved')  // רק משתמשים מאושרים
+      .limit(5);
+  
+    // ביצוע שני החיפושים במקביל
+    Promise.all([emailQuery.get(), nameQuery.get()])
+      .then(([emailResults, nameResults]) => {
+        const uniqueUsers = new Map(); // למניעת כפילויות
+        
+        // הוספת תוצאות חיפוש לפי אימייל
+        emailResults.forEach(doc => {
+          uniqueUsers.set(doc.id, doc.data());
+        });
+        
+        // הוספת תוצאות חיפוש לפי שם
+        nameResults.forEach(doc => {
+          uniqueUsers.set(doc.id, doc.data());
+        });
+        
+        if (uniqueUsers.size === 0) {
           resultsDiv.innerHTML = '<div style="color: var(--danger); padding: 10px; background-color: #f8d7da; border-radius: 4px; margin-top: 10px;">משתמש לא נמצא. הזמן אותו להירשם למערכת.</div>';
+          document.getElementById('add-member-confirm-btn').disabled = true;
           return;
         }
-
-        const user = snapshot.docs[0].data();
-        resultsDiv.innerHTML = `
-          <div style="background-color: #f0f0f0; padding: 15px; border-radius: var(--radius); margin-top: 15px;">
-            <div style="font-weight: 500; font-size: 16px;">${user.displayName || user.email}</div>
-            <div style="color: #666;">${user.email}</div>
-          </div>
-        `;
-
-        // בדיקה אם המשתמש כבר בפרויקט
-        const isMember = currentProjectMembers.some(member => member.userId === snapshot.docs[0].id);
-
-        if (isMember) {
-          resultsDiv.innerHTML += '<div style="color: var(--warning); margin-top: 10px;">משתמש זה כבר חבר בפרויקט</div>';
-          document.getElementById('add-member-confirm-btn').disabled = true;
-        } else {
-          document.getElementById('add-member-confirm-btn').disabled = false;
+  
+        let resultsHTML = '';
+        let foundUsers = [];
+        
+        // עיבוד התוצאות
+        uniqueUsers.forEach((userData, userId) => {
+          // בדיקה אם המשתמש כבר בפרויקט
+          const isMember = currentProjectMembers.some(member => member.userId === userId);
+          
+          foundUsers.push({
+            userId: userId,
+            email: userData.email,
+            displayName: userData.displayName || userData.email.split('@')[0],
+            isMember: isMember
+          });
+        });
+        
+        // הצגת התוצאות
+        if (foundUsers.length > 0) {
+          resultsHTML = '<div style="margin-top: 15px;">';
+          
+          foundUsers.forEach(user => {
+            resultsHTML += `
+              <div class="user-search-result ${user.isMember ? 'already-member' : ''}" 
+                   data-id="${user.userId}" 
+                   data-email="${user.email}" 
+                   data-name="${user.displayName}"
+                   style="background-color: #f0f0f0; padding: 15px; border-radius: var(--radius); margin-bottom: 10px; cursor: pointer; ${user.isMember ? 'opacity: 0.7;' : ''}">
+                <div style="font-weight: 500; font-size: 16px;">${user.displayName}</div>
+                <div style="color: #666;">${user.email}</div>
+                ${user.isMember ? '<div style="color: var(--warning); margin-top: 5px;">משתמש זה כבר חבר בפרויקט</div>' : ''}
+              </div>
+            `;
+          });
+          
+          resultsHTML += '</div>';
+          resultsDiv.innerHTML = resultsHTML;
+          
+          // הוספת אירוע בחירת משתמש
+          document.querySelectorAll('.user-search-result').forEach(result => {
+            result.addEventListener('click', function() {
+              if (this.classList.contains('already-member')) {
+                return; // אם כבר חבר אז לא עושים כלום
+              }
+              
+              // סימון כל התוצאות כלא נבחרות
+              document.querySelectorAll('.user-search-result').forEach(el => {
+                el.classList.remove('selected');
+                el.style.border = 'none';
+              });
+              
+              // סימון הנבחר
+              this.classList.add('selected');
+              this.style.border = '2px solid var(--primary)';
+              
+              // הפעלת כפתור ההוספה
+              const addButton = document.getElementById('add-member-confirm-btn');
+              addButton.disabled = false;
+              
+              // שמירת פרטי המשתמש הנבחר בכפתור
+              addButton.dataset.id = this.dataset.id;
+              addButton.dataset.email = this.dataset.email;
+              addButton.dataset.name = this.dataset.name;
+            });
+          });
         }
       })
       .catch(error => {
         console.error("Error searching for user:", error);
         resultsDiv.innerHTML = '<div style="color: var(--danger);">שגיאה בחיפוש משתמש</div>';
       });
-    }
+  }
     // הוספת חבר לפרויקט
     function addMemberToProject() {
-      const email = document.getElementById('member-email').value.trim().toLowerCase();
-
-      if (!email) {
-        alert('אנא הזן אימייל');
-        return;
-      }
-
-      showLoader();
-
-      // מציאת המשתמש לפי האימייל
-      db.collection('users')
-        .where('email', '==', email)
-        .limit(1)
-        .get()
-        .then(snapshot => {
-          if (snapshot.empty) {
-            hideLoader();
-            alert('משתמש לא נמצא');
-            return;
-          }
-
-          const memberDoc = snapshot.docs[0];
-          const memberId = memberDoc.id;
-          const memberData = memberDoc.data();
-
-          // בדיקה אם המשתמש כבר קיים בפרויקט
-          if (currentProjectMembers.some(member => member.userId === memberId)) {
-            hideLoader();
-            alert('משתמש זה כבר קיים בפרויקט');
-            return;
-          }
-
-          // הוספת המשתמש לרשימת החברים של הפרויקט
-          db.collection('project_members').add({
-            projectId: currentProjectId,
-            userId: memberId,
-            email: memberData.email,
-            displayName: memberData.displayName || memberData.email.split('@')[0],
-            role: 'member',
-            addedBy: currentUser.uid,
-            addedAt: firebase.firestore.FieldValue.serverTimestamp()
-          })
-          .then(() => {
-            hideLoader();
-            document.getElementById('team-member-modal').style.display = 'none';
-
-            // רישום פעילות
-            logActivity('הוסיף חבר צוות', currentProjectId, `הוסיף את ${memberData.displayName || memberData.email} לפרויקט`);
-
-            showNotification('חבר צוות נוסף', 'חבר הצוות נוסף בהצלחה לפרויקט', 'success');
-
-            loadProjectMembers(currentProjectId);
-          })
-          .catch(error => {
-            hideLoader();
-            console.error("Error adding team member:", error);
-            alert('שגיאה בהוספת חבר צוות');
-          });
-        })
-        .catch(error => {
-          hideLoader();
-          console.error("Error searching for user:", error);
-          alert('שגיאה בחיפוש משתמש');
-        });
+    const addButton = document.getElementById('add-member-confirm-btn');
+    
+    // בדיקה אם נבחר משתמש
+    if (addButton.disabled || !addButton.dataset.id) {
+      alert('אנא בחר משתמש להוספה');
+      return;
     }
+  
+    const userId = addButton.dataset.id;
+    const userEmail = addButton.dataset.email;
+    const userName = addButton.dataset.name;
+  
+    showLoader();
+  
+    // בדיקה אם המשתמש כבר קיים בפרויקט
+    if (currentProjectMembers.some(member => member.userId === userId)) {
+      hideLoader();
+      alert('משתמש זה כבר קיים בפרויקט');
+      return;
+    }
+  
+    // הוספת המשתמש לרשימת החברים של הפרויקט
+    db.collection('project_members').add({
+      projectId: currentProjectId,
+      userId: userId,
+      email: userEmail,
+      displayName: userName,
+      role: 'member',
+      addedBy: currentUser.uid,
+      addedAt: firebase.firestore.FieldValue.serverTimestamp()
+    })
+    .then(() => {
+      hideLoader();
+      document.getElementById('team-member-modal').style.display = 'none';
+  
+      // רישום פעילות
+      logActivity('הוסיף חבר צוות', currentProjectId, `הוסיף את ${userName} לפרויקט`);
+  
+      showNotification('חבר צוות נוסף', 'חבר הצוות נוסף בהצלחה לפרויקט', 'success');
+  
+      loadProjectMembers(currentProjectId);
+    })
+    .catch(error => {
+      hideLoader();
+      console.error("Error adding team member:", error);
+      alert('שגיאה בהוספת חבר צוות');
+    });
+  }
 
     // פונקציות פרויקטים
     function loadProjects() {
