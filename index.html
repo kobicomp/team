@@ -4447,26 +4447,41 @@
   
       // טעינת התקדמות פרויקט
       function loadProjectProgress(projectId, projectCard) {
-        db.collection('tasks')
-          .where('projectId', '==', projectId)
-          .get()
-          .then(snapshot => {
-            const tasksCount = snapshot.size;
-            const completedCount = snapshot.docs.filter(doc => doc.data().status === 'completed').length;
-            const progress = tasksCount > 0 ? Math.round((completedCount / tasksCount) * 100) : 0;
+    console.log(`loadProjectProgress: טוען התקדמות לפרויקט ${projectId}`);
+    try {
+      db.collection('tasks')
+        .where('projectId', '==', projectId)
+        .get()
+        .then(snapshot => {
+          console.log(`loadProjectProgress: קיבלתי ${snapshot.size} משימות לפרויקט ${projectId}`);
+          const tasksCount = snapshot.size;
+          const completedCount = snapshot.docs.filter(doc => doc.data().status === 'completed').length;
+          const progress = tasksCount > 0 ? Math.round((completedCount / tasksCount) * 100) : 0;
   
-            // עדכון המדדים בכרטיס
+          // עדכון המדדים בכרטיס
+          try {
             const progressBar = projectCard.querySelector('.progress-bar');
             const progressText = projectCard.querySelectorAll('.progress-text span');
   
-            progressBar.style.width = `${progress}%`;
-            progressText[0].textContent = `${progress}% הושלם`;
-            progressText[1].textContent = `${completedCount}/${tasksCount} משימות`;
-          })
-          .catch(error => {
-            console.error("Error loading project progress:", error);
-          });
-      }
+            if (progressBar && progressText && progressText.length >= 2) {
+              progressBar.style.width = `${progress}%`;
+              progressText[0].textContent = `${progress}% הושלם`;
+              progressText[1].textContent = `${completedCount}/${tasksCount} משימות`;
+              console.log(`loadProjectProgress: עדכון התקדמות הושלם לפרויקט ${projectId}`);
+            } else {
+              console.error(`loadProjectProgress: לא נמצאו אלמנטים להתקדמות בפרויקט ${projectId}`);
+            }
+          } catch (updateError) {
+            console.error(`loadProjectProgress: שגיאה בעדכון התקדמות בפרויקט ${projectId}:`, updateError);
+          }
+        })
+        .catch(error => {
+          console.error(`loadProjectProgress: שגיאה בטעינת התקדמות פרויקט ${projectId}:`, error);
+        });
+    } catch (error) {
+      console.error(`loadProjectProgress: שגיאה כללית בטעינת התקדמות פרויקט ${projectId}:`, error);
+    }
+  }
   
       // פונקציות אימות
       function login() {
@@ -5441,6 +5456,36 @@ function loadProjects() {
     console.error("loadProjects: שגיאה כללית:", error);
     projectsList.innerHTML = '<div>שגיאה בטעינת פרויקטים. נסה שוב מאוחר יותר.</div>';
     hideLoader();
+  }
+  // בסוף loadProjects() אחרי loadTeamProjects()
+console.log('loadProjects: וידוא תצוגת האפליקציה');
+ensureAppViewIsVisible();
+}
+// בסוף loadProjects() או בפונקציה נפרדת שתיקרא אחרי טעינת הפרויקטים
+function ensureAppViewIsVisible() {
+  console.log('ensureAppViewIsVisible: וידוא שהאפליקציה גלויה');
+  try {
+    // וידוא שמסך הטעינה מוסתר
+    const loader = document.getElementById('loader');
+    if (loader) {
+      loader.classList.add('hidden');
+    }
+
+    // וידוא שאזור האפליקציה מוצג
+    const appSection = document.getElementById('app-section');
+    if (appSection) {
+      appSection.classList.remove('hidden');
+      console.log('ensureAppViewIsVisible: וידוא שאזור האפליקציה גלוי');
+    }
+
+    // וידוא שאזור ההתחברות מוסתר
+    const authSection = document.getElementById('auth-section');
+    if (authSection) {
+      authSection.classList.add('hidden');
+      console.log('ensureAppViewIsVisible: וידוא שאזור ההתחברות מוסתר');
+    }
+  } catch (error) {
+    console.error('ensureAppViewIsVisible: שגיאה בוידוא תצוגת האפליקציה:', error);
   }
 }
 // פונקציה לסינון פרויקטים לפי מונח חיפוש
@@ -7617,6 +7662,36 @@ function loadProjectProgressChart(projectId) {
       console.error('Error loading project progress chart:', error);
     });
 }
+// פונקציה לבדיקת תקינות האפליקציה - להכניס לסוף הקובץ
+function performEmergencyRecovery() {
+  console.log('performEmergencyRecovery: מבצע שחזור חירום של האפליקציה');
+  
+  // מסיר את כל המסכים המוסתרים
+  document.getElementById('loader').classList.add('hidden');
+  document.getElementById('auth-section').classList.add('hidden');
+  document.getElementById('app-section').classList.remove('hidden');
+  
+  // מציג בצורה מאולצת את תוכן האפליקציה
+  document.querySelectorAll('.dashboard-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('nav-dashboard-projects').classList.add('active');
+  
+  document.querySelectorAll('#projects-view, #dashboard-view, #stats-view, #activity-view, #profile-view, #settings-view, #project-detail-view').forEach(view => {
+    view.classList.add('hidden');
+  });
+  
+  document.getElementById('projects-view').classList.remove('hidden');
+  
+  console.log('performEmergencyRecovery: שחזור חירום הושלם');
+}
+
+// הוספת טיימר שיבצע שחזור חירום אם האפליקציה לא נטענה תוך 10 שניות
+setTimeout(function() {
+  // בדוק אם המסך עדיין תקוע
+  if (!document.getElementById('loader').classList.contains('hidden')) {
+    console.log('האפליקציה לא נטענה תוך 10 שניות - מבצע שחזור חירום');
+    performEmergencyRecovery();
+  }
+}, 10000);
 
 // פונקציה להצגת מודל צ'אט משימה
 function showTaskChat(taskId, taskName) {
