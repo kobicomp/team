@@ -1600,6 +1600,22 @@
     body.dark-mode .hidden {
       display: none !important;
     }
+    /* סגנונות דריסה לוידוא תצוגה נכונה */
+ body.force-visibility #loader {
+   display: none !important;
+ }
+ 
+ body.force-visibility #auth-section {
+   display: none !important;
+ }
+ 
+ body.force-visibility #app-section {
+   display: block !important;
+ }
+ 
+ body.force-visibility #projects-view {
+   display: block !important;
+ }
   </style>
 </head>
 <body>
@@ -3017,6 +3033,11 @@
         hideLoader();
         clearTimeout(safetyTimer);
       });
+      // בסוף תהליך הכניסה המוצלח של המנהל:
+hideLoader();
+console.log('startAuthListener: תהליך כניסת מנהל הושלם');
+// הוסף כאן:
+setTimeout(forceAppVisibility, 1000); // לתת לתהליך להשלים ואז לאלץ תצוגה
     }
       // משתנים גלובליים
       let adminEmail = null;
@@ -5460,6 +5481,9 @@ function loadProjects() {
   // בסוף loadProjects() אחרי loadTeamProjects()
 console.log('loadProjects: וידוא תצוגת האפליקציה');
 ensureAppViewIsVisible();
+console.log('loadProjects: טעינת פרויקטים הסתיימה, הסתרת לוודר');
+// הוסף כאן:
+setTimeout(forceAppVisibility, 500);
 }
 // בסוף loadProjects() או בפונקציה נפרדת שתיקרא אחרי טעינת הפרויקטים
 function ensureAppViewIsVisible() {
@@ -7779,6 +7803,40 @@ function sendChatMessage() {
       console.error("Error sending message:", error);
       showNotification('שגיאה', 'אירעה שגיאה בשליחת ההודעה', 'danger');
     });
+}
+// פונקציה לאילוץ תצוגת האפליקציה - להוסיף בסוף הקובץ ולקרוא לה
+function forceAppVisibility() {
+  // הסרת כל ההצגות הקודמות
+  document.documentElement.style.display = "block"; // וידוא שכל המסמך מוצג
+  
+  // הסתרה מפורשת של מסך הטעינה ומסך ההתחברות
+  const loader = document.getElementById('loader');
+  if (loader) {
+    loader.style.display = "none";
+    loader.classList.add('hidden');
+  }
+  
+  const authSection = document.getElementById('auth-section');
+  if (authSection) {
+    authSection.style.display = "none";
+    authSection.classList.add('hidden');
+  }
+  
+  // הצגה מפורשת של מסך האפליקציה
+  const appSection = document.getElementById('app-section');
+  if (appSection) {
+    appSection.style.display = "block";
+    appSection.classList.remove('hidden');
+  }
+  
+  // וידוא שתצוגת הפרויקטים גלויה
+  const projectsView = document.getElementById('projects-view');
+  if (projectsView) {
+    projectsView.style.display = "block";
+    projectsView.classList.remove('hidden');
+  }
+  
+  console.log('forceAppVisibility: אילוץ תצוגת האפליקציה הושלם');
 }
 
 function addChatMessageToUI(message, currentUserId) {
