@@ -1278,7 +1278,6 @@
         <!-- אזור חיפוש -->
         <div class="search-container">
           <i class="fas fa-search search-icon"></i>
-          
           <input type="text" id="search-projects" placeholder="חיפוש פרויקטים לפי שם, תיאור או תגיות...">
         </div>
 
@@ -6076,24 +6075,35 @@ function quickUpdateTaskStatus(taskId, newStatus) {
       }
     });
     
-    // אירוע לחיצה על כפתור הוספת חבר
-    document.getElementById('add-member-confirm-btn').addEventListener('click', addMemberToProject);
-    
-    // אירוע לחיצה על כפתור ביטול
-    document.getElementById('cancel-member-btn').addEventListener('click', function() {
-      document.getElementById('team-member-modal').style.display = 'none';
-    });
-    
-    // סגירת המודל בלחיצה מחוץ לתוכן
-    window.addEventListener('click', function(e) {
-      const modal = document.getElementById('team-member-modal');
-      if (e.target === modal) {
-        modal.style.display = 'none';
-      }
-    });
+    // מאזין לאירוע שינוי בשדה החיפוש
+  document.getElementById('member-email').addEventListener('input', function() {
+    // רק אם יש לפחות 3 תווים, בצע חיפוש
+    if (this.value.trim().length >= 3) {
+      searchUserByEmailOrName();
+    } else {
+      document.getElementById('member-search-results').innerHTML = '<div>הזן לפחות 3 תווים לחיפוש</div>';
+      document.getElementById('add-member-confirm-btn').disabled = true;
+    }
   });
-   // הפעלת אתחול Firebase בטעינת הדף
-   document.addEventListener('DOMContentLoaded', initializeFirebase);
+  
+  // אירוע לחיצה על כפתור הוספת חבר
+  document.getElementById('add-member-confirm-btn').addEventListener('click', addMemberToProject);
+  
+  // אירוע לחיצה על כפתור ביטול
+  document.getElementById('cancel-member-btn').addEventListener('click', function() {
+    document.getElementById('team-member-modal').style.display = 'none';
+  });
+  
+  // סגירת המודל בלחיצה מחוץ לתוכן
+  window.addEventListener('click', function(e) {
+    const modal = document.getElementById('team-member-modal');
+    if (e.target === modal) {
+      modal.style.display = 'none';
+    }
+  });
+  
+  // הפעלת אתחול Firebase בטעינת הדף
+  document.addEventListener('DOMContentLoaded', initializeFirebase);
   </script>
 </body>
 </html>
