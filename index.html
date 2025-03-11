@@ -545,7 +545,7 @@
       gap: 5px;
       margin-top: 10px;
     }
-    
+
     .status-btn {
       font-size: 12px !important;
       padding: 3px 8px !important;
@@ -554,7 +554,7 @@
       transition: all 0.2s;
       border: none !important;
     }
-    
+
     .status-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -939,7 +939,7 @@
     max-height: 300px;
     overflow: hidden;
   }
-  
+
   .chart-title {
     font-size: 16px;
     font-weight: 500;
@@ -1059,21 +1059,32 @@
       cursor: pointer;
       color: var(--danger);
     }
-    .user-search-result {
-      transition: all 0.2s ease;
-    }
-
-    .user-search-result:hover {
-      background-color: #e8e8e8 !important;
-    }
-
-    .user-search-result.selected {
-      background-color: #e1f5fe !important;
-    }
-
-    .user-search-result.already-member {
-      cursor: not-allowed !important;
-    }
+    /* סגנונות לתוצאות חיפוש משתמשים */
+  .user-search-result {
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .user-search-result:hover {
+    background-color: #e8e8e8 !important;
+  }
+  
+  .user-search-result.selected {
+    background-color: #e1f5fe !important;
+  }
+  
+  .user-search-result.already-member {
+    cursor: not-allowed !important;
+  }
+  
+  /* סגנון שדה החיפוש */
+  #member-email {
+    padding-right: 40px; /* מרווח לאייקון חיפוש */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23adb5bd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+  }
     /* חדש - צ'אט משימה */
     .task-chat {
       max-height: 300px;
@@ -1267,6 +1278,7 @@
         <!-- אזור חיפוש -->
         <div class="search-container">
           <i class="fas fa-search search-icon"></i>
+          
           <input type="text" id="search-projects" placeholder="חיפוש פרויקטים לפי שם, תיאור או תגיות...">
         </div>
 
@@ -1545,29 +1557,30 @@
   </div>
 
   <!-- מודל חבר צוות -->
-  <div id="team-member-modal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">הוספת חבר צוות לפרויקט</h3>
-        <span class="modal-close">&times;</span>
-      </div>
+  <!-- מודל חבר צוות -->
+<div id="team-member-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">הוספת חבר צוות לפרויקט</h3>
+      <span class="modal-close">&times;</span>
+    </div>
 
-      <div class="form-group">
-        <label id="member-email-label" for="member-email">חיפוש (אימייל או שם):</label>
-        <input type="text" id="member-email" placeholder="הזן אימייל או שם של חבר צוות">
-        <div style="font-size: 12px; color: #666; margin-top: 5px;">
-          הזן לפחות 3 תווים כדי להתחיל בחיפוש
-        </div>
-      </div>
-
-      <div id="member-search-results"></div>
-
-      <div class="modal-footer">
-        <button id="add-member-confirm-btn" class="btn btn-success" disabled>הוסף לפרויקט</button>
-        <button id="cancel-member-btn" class="btn btn-outline">ביטול</button>
+    <div class="form-group">
+      <label id="member-email-label" for="member-email">חיפוש (אימייל או שם):</label>
+      <input type="text" id="member-email" placeholder="הזן אימייל או שם של חבר צוות">
+      <div style="font-size: 12px; color: #666; margin-top: 5px;">
+        הזן לפחות 3 תווים כדי להתחיל בחיפוש
       </div>
     </div>
+
+    <div id="member-search-results"></div>
+
+    <div class="modal-footer">
+      <button id="add-member-confirm-btn" class="btn btn-success" disabled>הוסף לפרויקט</button>
+      <button id="cancel-member-btn" class="btn btn-outline">ביטול</button>
+    </div>
   </div>
+</div>
 
   <!-- מודל צ'אט משימה -->
   <div id="task-chat-modal" class="modal">
@@ -2342,49 +2355,103 @@ function loadPendingRegistrations() {
         }
       }
       function approveUserRegistration(userId, userEmail) {
-      if (confirm(`האם אתה בטוח שברצונך לאשר את המשתמש ${userEmail}?`)) {
-        showLoader();
-
-        db.collection('users').doc(userId).update({
-          status: 'approved',
-          approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          approvedBy: currentUser.uid
+    if (confirm(`האם אתה בטוח שברצונך לאשר את המשתמש ${userEmail}?`)) {
+      showLoader();
+      
+      console.log("מתחיל תהליך אישור משתמש:", userId, userEmail);
+  
+      // קבלת מידע קיים על המשתמש
+      db.collection('users').doc(userId).get()
+        .then(doc => {
+          if (!doc.exists) {
+            throw new Error('משתמש לא קיים במערכת');
+          }
+          
+          // שילוב המידע הקיים עם העדכון
+          const userData = doc.data();
+          const updatedData = {
+            status: 'approved',
+            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            approvedBy: currentUser.uid,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          
+          console.log("מעדכן סטטוס משתמש:", updatedData);
+          
+          // עדכון המשתמש
+          return db.collection('users').doc(userId).update(updatedData)
+            .then(() => {
+              console.log("עדכון סטטוס משתמש בוצע בהצלחה");
+              
+              // הוספת המשתמש לאינדקס החיפוש
+              const fullUserData = { ...userData, ...updatedData };
+              return updateUserSearchIndex(userId, fullUserData);
+            });
         })
         .then(() => {
+          console.log("אישור משתמש והוספה לאינדקס הושלמו בהצלחה");
           hideLoader();
           showNotification('משתמש אושר', `המשתמש ${userEmail} אושר בהצלחה`, 'success');
-          loadPendingRegistrations(); // רענון הרשימה
+          
+          // רענון הרשימה
+          loadPendingRegistrations();
+          
+          // רישום פעילות
+          try {
+            logActivity('אישר משתמש', userId, `אישר את המשתמש ${userEmail}`);
+          } catch (e) {
+            console.warn("לא ניתן לתעד פעילות:", e);
+          }
         })
         .catch(error => {
+          console.error("שגיאה באישור משתמש:", error);
           hideLoader();
-          console.error("Error approving user:", error);
           showNotification('שגיאה', 'שגיאה באישור המשתמש: ' + error.message, 'danger');
         });
-      }
     }
+  }
 
-    function rejectUserRegistration(userId, userEmail) {
-      if (confirm(`האם אתה בטוח שברצונך לדחות את המשתמש ${userEmail}?`)) {
-        showLoader();
+  function rejectUserRegistration(userId, userEmail) {
+  if (confirm(`האם אתה בטוח שברצונך לדחות את המשתמש ${userEmail}?`)) {
+    showLoader();
+    
+    console.log("מתחיל תהליך דחיית משתמש:", userId, userEmail);
 
-        db.collection('users').doc(userId).update({
-          status: 'rejected',
-          rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          rejectedBy: currentUser.uid
-        })
-        .then(() => {
-          hideLoader();
-          showNotification('משתמש נדחה', `המשתמש ${userEmail} נדחה בהצלחה`, 'success');
-          loadPendingRegistrations(); // רענון הרשימה
-        })
-        .catch(error => {
-          hideLoader();
-          console.error("Error rejecting user:", error);
-          showNotification('שגיאה', 'שגיאה בדחיית המשתמש: ' + error.message, 'danger');
-        });
+    // קבלת מידע קיים על המשתמש
+    db.collection('users').doc(userId).update({
+      status: 'rejected',
+      rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      rejectedBy: currentUser.uid,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    })
+    .then(() => {
+      console.log("עדכון סטטוס משתמש לדחוי בוצע בהצלחה");
+      
+      // הסר את המשתמש מאינדקס החיפוש אם קיים
+      return removeUserFromSearchIndex(userId);
+    })
+    .then(() => {
+      console.log("דחיית משתמש הושלמה בהצלחה");
+      hideLoader();
+      showNotification('משתמש נדחה', `המשתמש ${userEmail} נדחה בהצלחה`, 'warning');
+      
+      // רענון הרשימה
+      loadPendingRegistrations();
+      
+      // רישום פעילות
+      try {
+        logActivity('דחה משתמש', userId, `דחה את המשתמש ${userEmail}`);
+      } catch (e) {
+        console.warn("לא ניתן לתעד פעילות:", e);
       }
-    }
-
+    })
+    .catch(error => {
+      console.error("שגיאה בדחיית משתמש:", error);
+      hideLoader();
+      showNotification('שגיאה', 'שגיאה בדחיית המשתמש: ' + error.message, 'danger');
+    });
+  }
+}
     function rejectUserRegistration(userId, userEmail) {
       if (confirm(`האם אתה בטוח שברצונך לדחות את המשתמש ${userEmail}?`)) {
         showLoader();
@@ -3655,7 +3722,83 @@ function displayProjects(projects) {
         showNotification('שגיאה בטעינת משימות', error.message, 'danger');
       });
     }
-
+    // פונקציה ליצירת אינדקס החיפוש הראשוני - יש להפעיל רק פעם אחת
+    function createInitialUserSearchIndex() {
+      console.log("יוצר אינדקס חיפוש משתמשים ראשוני...");
+      showLoader();
+      
+      // איסוף כל המשתמשים המאושרים
+      db.collection('users')
+        .where('status', '==', 'approved')
+        .get()
+        .then(snapshot => {
+          const batch = db.batch();
+          let count = 0;
+          
+          snapshot.forEach(doc => {
+            const userData = doc.data();
+            count++;
+            
+            // יצירת רשומת אינדקס עם מידע מינימלי
+            const indexRef = db.collection('user_search_index').doc(doc.id);
+            batch.set(indexRef, {
+              userId: doc.id,
+              email: userData.email,
+              displayName: userData.displayName || userData.email.split('@')[0],
+              status: 'approved',
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          });
+          
+          return batch.commit().then(() => {
+            hideLoader();
+            console.log(`אינדקס נוצר בהצלחה עם ${count} משתמשים`);
+            showNotification('אינדקס נוצר', `אינדקס חיפוש המשתמשים נוצר בהצלחה עם ${count} משתמשים`, 'success');
+          });
+        })
+        .catch(error => {
+          hideLoader();
+          console.error("שגיאה ביצירת אינדקס חיפוש:", error);
+          showNotification('שגיאה', 'שגיאה ביצירת אינדקס חיפוש המשתמשים', 'danger');
+        });
+    }
+    
+    // פונקציה לעדכון אינדקס החיפוש עבור משתמש בודד
+    function updateUserSearchIndex(userId, userData) {
+      console.log("מעדכן אינדקס חיפוש עבור משתמש:", userId);
+      
+      // וודא שהמשתמש מאושר
+      if (userData.status !== 'approved') {
+        console.log("המשתמש לא מאושר, מסיר מאינדקס החיפוש");
+        // אם המשתמש לא מאושר, מחק אותו מהאינדקס אם קיים
+        return db.collection('user_search_index').doc(userId).delete().catch(e => {
+          console.error("שגיאה במחיקת משתמש מאינדקס החיפוש:", e);
+        });
+      }
+      
+      console.log("מעדכן משתמש באינדקס החיפוש");
+      // עדכון האינדקס עם המידע העדכני
+      return db.collection('user_search_index').doc(userId).set({
+        userId: userId,
+        email: userData.email,
+        displayName: userData.displayName || userData.email.split('@')[0],
+        status: 'approved',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(error => {
+        console.error("שגיאה בעדכון אינדקס חיפוש:", error);
+      });
+    }
+    
+    // פונקציה להסרת משתמש מאינדקס החיפוש
+    function removeUserFromSearchIndex(userId) {
+      console.log("מסיר משתמש מאינדקס החיפוש:", userId);
+      
+      return db.collection('user_search_index').doc(userId).delete()
+        .catch(error => {
+          console.error("שגיאה בהסרת משתמש מאינדקס החיפוש:", error);
+        });
+    }
+    
     function updateProjectsDropdown() {
       const projectSelect = document.getElementById('dashboard-filter-project');
       projectSelect.innerHTML = '<option value="all">כל הפרויקטים</option>';
@@ -3993,62 +4136,66 @@ function displayProjects(projects) {
 
     // חיפוש משתמש לפי אימייל
     // חיפוש משתמש לפי אימייל או שם משתמש
+    // חיפוש משתמש לפי אימייל או שם משתמש
   function searchUserByEmailOrName() {
     const searchTerm = document.getElementById('member-email').value.trim();
     const resultsDiv = document.getElementById('member-search-results');
-
+  
     if (!searchTerm || searchTerm.length < 3) {
       resultsDiv.innerHTML = '<div>הזן לפחות 3 תווים לחיפוש</div>';
+      document.getElementById('add-member-confirm-btn').disabled = true;
       return;
     }
-
+  
     resultsDiv.innerHTML = '<div class="text-center">מחפש משתמש...</div>';
-
+    document.getElementById('add-member-confirm-btn').disabled = true;
+  
     // שינוי שם האלמנט בממשק
-    document.getElementById('member-email-label').textContent = 'חיפוש (אימייל או שם):';
-
+    const emailLabel = document.getElementById('member-email-label');
+    if (emailLabel) {
+      emailLabel.textContent = 'חיפוש (אימייל או שם):';
+    }
+  
     // חיפוש לפי אימייל מדויק
-    const emailQuery = db.collection('users')
+    const emailQuery = db.collection('user_search_index')
       .where('email', '==', searchTerm.toLowerCase())
-      .where('status', '==', 'approved')  // רק משתמשים מאושרים
       .limit(5);
-
+    
     // חיפוש לפי שם משתמש
-    const nameQuery = db.collection('users')
+    const nameQuery = db.collection('user_search_index')
       .where('displayName', '>=', searchTerm)
-      .where('displayName', '<=', searchTerm + '\uf8ff') // טריק לחיפוש prefix
-      .where('status', '==', 'approved')  // רק משתמשים מאושרים
+      .where('displayName', '<=', searchTerm + '\uf8ff')
       .limit(5);
-
+  
     // ביצוע שני החיפושים במקביל
     Promise.all([emailQuery.get(), nameQuery.get()])
       .then(([emailResults, nameResults]) => {
         const uniqueUsers = new Map(); // למניעת כפילויות
-
+        
         // הוספת תוצאות חיפוש לפי אימייל
         emailResults.forEach(doc => {
           uniqueUsers.set(doc.id, doc.data());
         });
-
+        
         // הוספת תוצאות חיפוש לפי שם
         nameResults.forEach(doc => {
           uniqueUsers.set(doc.id, doc.data());
         });
-
+        
         if (uniqueUsers.size === 0) {
           resultsDiv.innerHTML = '<div style="color: var(--danger); padding: 10px; background-color: #f8d7da; border-radius: 4px; margin-top: 10px;">משתמש לא נמצא. הזמן אותו להירשם למערכת.</div>';
           document.getElementById('add-member-confirm-btn').disabled = true;
           return;
         }
-
+  
         let resultsHTML = '';
         let foundUsers = [];
-
+        
         // עיבוד התוצאות
         uniqueUsers.forEach((userData, userId) => {
           // בדיקה אם המשתמש כבר בפרויקט
           const isMember = currentProjectMembers.some(member => member.userId === userId);
-
+          
           foundUsers.push({
             userId: userId,
             email: userData.email,
@@ -4056,16 +4203,16 @@ function displayProjects(projects) {
             isMember: isMember
           });
         });
-
+        
         // הצגת התוצאות
         if (foundUsers.length > 0) {
           resultsHTML = '<div style="margin-top: 15px;">';
-
+          
           foundUsers.forEach(user => {
             resultsHTML += `
-              <div class="user-search-result ${user.isMember ? 'already-member' : ''}"
-                   data-id="${user.userId}"
-                   data-email="${user.email}"
+              <div class="user-search-result ${user.isMember ? 'already-member' : ''}" 
+                   data-id="${user.userId}" 
+                   data-email="${user.email}" 
                    data-name="${user.displayName}"
                    style="background-color: #f0f0f0; padding: 15px; border-radius: var(--radius); margin-bottom: 10px; cursor: pointer; ${user.isMember ? 'opacity: 0.7;' : ''}">
                 <div style="font-weight: 500; font-size: 16px;">${user.displayName}</div>
@@ -4074,31 +4221,31 @@ function displayProjects(projects) {
               </div>
             `;
           });
-
+          
           resultsHTML += '</div>';
           resultsDiv.innerHTML = resultsHTML;
-
+          
           // הוספת אירוע בחירת משתמש
           document.querySelectorAll('.user-search-result').forEach(result => {
             result.addEventListener('click', function() {
               if (this.classList.contains('already-member')) {
                 return; // אם כבר חבר אז לא עושים כלום
               }
-
+              
               // סימון כל התוצאות כלא נבחרות
               document.querySelectorAll('.user-search-result').forEach(el => {
                 el.classList.remove('selected');
                 el.style.border = 'none';
               });
-
+              
               // סימון הנבחר
               this.classList.add('selected');
               this.style.border = '2px solid var(--primary)';
-
+              
               // הפעלת כפתור ההוספה
               const addButton = document.getElementById('add-member-confirm-btn');
               addButton.disabled = false;
-
+              
               // שמירת פרטי המשתמש הנבחר בכפתור
               addButton.dataset.id = this.dataset.id;
               addButton.dataset.email = this.dataset.email;
@@ -4109,32 +4256,32 @@ function displayProjects(projects) {
       })
       .catch(error => {
         console.error("Error searching for user:", error);
-        resultsDiv.innerHTML = '<div style="color: var(--danger);">שגיאה בחיפוש משתמש</div>';
+        resultsDiv.innerHTML = '<div style="color: var(--danger);">שגיאה בחיפוש משתמש. נסה שוב מאוחר יותר.</div>';
       });
   }
     // הוספת חבר לפרויקט
     function addMemberToProject() {
     const addButton = document.getElementById('add-member-confirm-btn');
-
+    
     // בדיקה אם נבחר משתמש
     if (addButton.disabled || !addButton.dataset.id) {
       alert('אנא בחר משתמש להוספה');
       return;
     }
-
+  
     const userId = addButton.dataset.id;
     const userEmail = addButton.dataset.email;
     const userName = addButton.dataset.name;
-
+  
     showLoader();
-
+  
     // בדיקה אם המשתמש כבר קיים בפרויקט
     if (currentProjectMembers.some(member => member.userId === userId)) {
       hideLoader();
       alert('משתמש זה כבר קיים בפרויקט');
       return;
     }
-
+  
     // הוספת המשתמש לרשימת החברים של הפרויקט
     db.collection('project_members').add({
       projectId: currentProjectId,
@@ -4148,12 +4295,12 @@ function displayProjects(projects) {
     .then(() => {
       hideLoader();
       document.getElementById('team-member-modal').style.display = 'none';
-
+  
       // רישום פעילות
       logActivity('הוסיף חבר צוות', currentProjectId, `הוסיף את ${userName} לפרויקט`);
-
+  
       showNotification('חבר צוות נוסף', 'חבר הצוות נוסף בהצלחה לפרויקט', 'success');
-
+  
       loadProjectMembers(currentProjectId);
     })
     .catch(error => {
@@ -4636,24 +4783,24 @@ function displayProjects(projects) {
     // בדיקה אם יש אלמנט קנבס לגרף
     const canvas = document.getElementById('project-progress-chart');
     if (!canvas) return;
-    
+
     // הגדרת גודל מקסימלי לקנבס הגרף
     canvas.style.maxHeight = '250px'; // גובה מקסימלי
     canvas.style.maxWidth = '100%'; // רוחב מקסימלי
     canvas.height = 250; // גובה הקנבס
-    
+
     // מחיקת גרף קיים אם יש
     if (charts.projectProgress) {
       charts.projectProgress.destroy();
     }
-    
+
     // חשוב: קבלת ההקשר של הקנבס - זה היה חסר
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       console.error("לא ניתן לקבל הקשר 2d מהקנבס");
       return;
     }
-  
+
     // טעינת המשימות של הפרויקט
     db.collection('tasks')
       .where('projectId', '==', projectId)
@@ -4687,7 +4834,7 @@ function displayProjects(projects) {
           });
           return;
         }
-  
+
         // חישוב סטטיסטיקות של המשימות
         const statuses = {
           'not-started': 0,
@@ -4696,16 +4843,16 @@ function displayProjects(projects) {
           'blocked': 0,
           'completed': 0
         };
-  
+
         snapshot.forEach(doc => {
           const task = doc.data();
           const status = task.status || 'not-started';
-  
+
           if (statuses[status] !== undefined) {
             statuses[status]++;
           }
         });
-  
+
         // יצירת הגרף
         charts.projectProgress = new Chart(ctx, {
           type: 'doughnut',
@@ -5238,31 +5385,31 @@ function displayProjects(projects) {
 
     function createTaskElement(task) {
     const { id, data } = task;
-  
+
     // הצגת תאריך בפורמט מקומי
     let deadlineText = 'אין תאריך יעד';
     let isOverdue = false;
-  
+
     if (data.deadline) {
       const date = new Date(data.deadline);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-  
+
       deadlineText = date.toLocaleDateString('he-IL');
-  
+
       if (date < today && data.status !== 'completed') {
         isOverdue = true;
       }
     }
-  
+
     // יצירת אלמנט משימה
     const taskItem = document.createElement('div');
     taskItem.className = `task-item ${data.status === 'completed' ? 'completed' : ''} ${data.isHelpRequest ? 'help-request' : ''}`;
-  
+
     // קבלת מידע על הסטטוס
     const statusClass = `status-${data.status || 'not-started'}`;
     const statusText = statusLabels[data.status || 'not-started'];
-  
+
     // מידע על האחראי למשימה
     let assigneeInfo = '';
     if (currentProjectData && currentProjectData.type === 'team' && data.assigneeId) {
@@ -5276,7 +5423,7 @@ function displayProjects(projects) {
         `;
       }
     }
-  
+
     // יצירת תגיות
     let tagsHtml = '';
     if (data.tags && data.tags.length > 0) {
@@ -5287,7 +5434,7 @@ function displayProjects(projects) {
       });
       tagsHtml += '</div>';
     }
-  
+
     // מידע נוסף על סטטוס (סיבת עיכוב או ממתין ל...)
     let statusExtraInfo = '';
     if (data.status === 'blocked' && data.blockedReason) {
@@ -5295,13 +5442,13 @@ function displayProjects(projects) {
     } else if (data.status === 'waiting' && data.waitingFor) {
       statusExtraInfo = `<div style="margin-top: 5px; color: var(--warning);"><i class="fas fa-hourglass-half"></i> ממתינה ל: ${data.waitingFor}</div>`;
     }
-  
+
     // בדיקה האם יש קבצים
     let filesInfo = '';
     if (data.files && data.files.length > 0) {
       filesInfo = `<div style="margin-top: 5px; color: var(--primary);"><i class="fas fa-paperclip"></i> ${data.files.length} קבצים מצורפים</div>`;
     }
-  
+
     // יצירת התוכן ה-HTML
     taskItem.innerHTML = `
       <div style="display: flex; align-items: flex-start;">
@@ -5317,7 +5464,7 @@ function displayProjects(projects) {
           ${statusExtraInfo}
           ${filesInfo}
           ${tagsHtml}
-          
+
           <!-- כאן נוסיף את כפתורי הסטטוס המהיר -->
           <div class="quick-status-buttons" style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px;">
           </div>
@@ -5335,7 +5482,7 @@ function displayProjects(projects) {
         </button>
       </div>
     `;
-  
+
     // הוספת כפתורי שינוי סטטוס מהיר
     const quickStatusButtons = taskItem.querySelector('.quick-status-buttons');
     if (quickStatusButtons) {
@@ -5347,14 +5494,14 @@ function displayProjects(projects) {
         { value: 'blocked', label: 'תקועה', color: '#dc3545', textColor: '#ffffff' },
         { value: 'completed', label: 'הושלמה', color: '#28a745', textColor: '#ffffff' }
       ];
-      
+
       // הוספת כפתור לכל סטטוס, למעט הנוכחי
       statuses.forEach(status => {
         // לא מציגים כפתור לסטטוס הנוכחי
         if (status.value === data.status) {
           return;
         }
-        
+
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'btn btn-sm status-btn';
@@ -5366,12 +5513,12 @@ function displayProjects(projects) {
         button.style.padding = '3px 8px';
         button.dataset.status = status.value;
         button.dataset.taskId = id;
-        
+
         // הוספת הכפתור לדיב
         quickStatusButtons.appendChild(button);
       });
     }
-  
+
     // הוספת אירועים
     const chatButton = taskItem.querySelector('.chat-task');
     if (chatButton) {
@@ -5381,7 +5528,7 @@ function displayProjects(projects) {
         showTaskChat(taskId, taskName);
       });
     }
-  
+
     const editButton = taskItem.querySelector('.edit-task');
     if (editButton) {
       editButton.addEventListener('click', function() {
@@ -5396,7 +5543,7 @@ function displayProjects(projects) {
           });
       });
     }
-  
+
     const deleteButton = taskItem.querySelector('.delete-task');
     if (deleteButton) {
       deleteButton.addEventListener('click', function() {
@@ -5405,7 +5552,7 @@ function displayProjects(projects) {
         }
       });
     }
-  
+
     // הוספת אירועי לחיצה לכפתורי הסטטוס המהיר
     const statusButtons = taskItem.querySelectorAll('.status-btn');
     statusButtons.forEach(button => {
@@ -5414,68 +5561,68 @@ function displayProjects(projects) {
         const newStatus = this.dataset.status;
         const taskId = this.dataset.taskId;
         const statusLabel = this.textContent;
-        
+
         if (confirm(`האם לשנות את סטטוס המשימה ל-${statusLabel}?`)) {
           quickUpdateTaskStatus(taskId, newStatus);
         }
       });
     });
-  
+
     return taskItem;
   }
   // פונקציה לעדכון מהיר של סטטוס משימה
 function quickUpdateTaskStatus(taskId, newStatus) {
   showLoader();
-  
+
   // עדכון התאריך גם
   const updates = {
     status: newStatus,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
-  
+
   // הוספת שדות תלויי סטטוס
   if (newStatus === 'completed') {
     updates.completedAt = firebase.firestore.FieldValue.serverTimestamp();
     updates.completedBy = currentUser.uid;
   }
-  
+
   // אין לנו גישה ישירה למסמך המשימה, לכן ראשית נקרא אותו
   db.collection('tasks').doc(taskId).get()
     .then(doc => {
       if (!doc.exists) {
         throw new Error('משימה לא קיימת');
       }
-      
+
       const taskData = doc.data();
-      
+
       // טיפול בשדות מיוחדים בהתאם לסטטוס החדש
       if (newStatus !== 'blocked' && taskData.blockedReason) {
         // מחיקת סיבת העיכוב אם הסטטוס אינו 'תקועה'
         updates.blockedReason = firebase.firestore.FieldValue.delete();
       }
-      
+
       if (newStatus !== 'waiting' && taskData.waitingFor) {
         // מחיקת שדה "ממתין ל" אם הסטטוס אינו 'ממתינה'
         updates.waitingFor = firebase.firestore.FieldValue.delete();
       }
-      
+
       // עדכון המשימה
       return db.collection('tasks').doc(taskId).update(updates);
     })
     .then(() => {
       hideLoader();
       showNotification('סטטוס עודכן', 'סטטוס המשימה עודכן בהצלחה', 'success');
-      
+
       // רישום פעילות
       logActivity('עדכן סטטוס משימה', taskId, `שינה את סטטוס המשימה ל-${statusLabels[newStatus]}`);
-      
+
       // טעינה מחדש של המשימות
       if (currentTaskView === "list") {
         loadTasks(currentProjectId);
       } else {
         displayTasksByAssignee();
       }
-      
+
       // רענון גרף התקדמות הפרויקט
       loadProjectProgressChart(currentProjectId);
     })
@@ -5543,43 +5690,43 @@ function quickUpdateTaskStatus(taskId, newStatus) {
     // פונקציה לעדכון מהיר של סטטוס משימה
     function quickUpdateTaskStatus(taskId, newStatus) {
       showLoader();
-      
+
       // עדכון התאריך גם
       const updates = {
         status: newStatus,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      
+
       // הוספת שדות תלויי סטטוס
       if (newStatus === 'completed') {
         updates.completedAt = firebase.firestore.FieldValue.serverTimestamp();
         updates.completedBy = currentUser.uid;
       }
-      
+
       // מחיקת שדות לא רלוונטיים כשמשנים סטטוס
       if (newStatus !== 'blocked') {
         updates.blockedReason = firebase.firestore.FieldValue.delete();
       }
-      
+
       if (newStatus !== 'waiting') {
         updates.waitingFor = firebase.firestore.FieldValue.delete();
       }
-      
+
       db.collection('tasks').doc(taskId).update(updates)
         .then(() => {
           hideLoader();
           showNotification('סטטוס עודכן', 'סטטוס המשימה עודכן בהצלחה', 'success');
-          
+
           // רישום פעילות
           logActivity('עדכן סטטוס משימה', taskId, `שינה את סטטוס המשימה ל-${getStatusLabel(newStatus)}`);
-          
+
           // טעינה מחדש של המשימות
           if (currentTaskView === "list") {
             loadTasks(currentProjectId);
           } else {
             displayTasksByAssignee();
           }
-          
+
           // רענון גרף התקדמות הפרויקט
           loadProjectProgressChart(currentProjectId);
         })
@@ -5589,7 +5736,7 @@ function quickUpdateTaskStatus(taskId, newStatus) {
           showNotification('שגיאה', 'שגיאה בעדכון סטטוס המשימה', 'danger');
         });
     }
-    
+
     // פונקציה עזר לקבלת תווית סטטוס בעברית
     function getStatusLabel(status) {
       const statusLabels = {
@@ -5599,10 +5746,10 @@ function quickUpdateTaskStatus(taskId, newStatus) {
         'blocked': 'תקועה',
         'completed': 'הושלמה'
       };
-      
+
       return statusLabels[status] || status;
     }
-    
+
     function showEditTaskModal(taskId, task) {
       document.getElementById('task-modal-title').textContent = task.isHelpRequest ? 'עריכת בקשת עזרה' : 'עריכת משימה';
       document.getElementById('task-name').value = task.name || '';
@@ -5918,7 +6065,33 @@ function quickUpdateTaskStatus(taskId, newStatus) {
        }
      }, 2000);
    });
-
+   // מאזין לאירוע שינוי בשדה החיפוש
+    document.getElementById('member-email').addEventListener('input', function() {
+      // רק אם יש לפחות 3 תווים, בצע חיפוש
+      if (this.value.trim().length >= 3) {
+        searchUserByEmailOrName();
+      } else {
+        document.getElementById('member-search-results').innerHTML = '<div>הזן לפחות 3 תווים לחיפוש</div>';
+        document.getElementById('add-member-confirm-btn').disabled = true;
+      }
+    });
+    
+    // אירוע לחיצה על כפתור הוספת חבר
+    document.getElementById('add-member-confirm-btn').addEventListener('click', addMemberToProject);
+    
+    // אירוע לחיצה על כפתור ביטול
+    document.getElementById('cancel-member-btn').addEventListener('click', function() {
+      document.getElementById('team-member-modal').style.display = 'none';
+    });
+    
+    // סגירת המודל בלחיצה מחוץ לתוכן
+    window.addEventListener('click', function(e) {
+      const modal = document.getElementById('team-member-modal');
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+  });
    // הפעלת אתחול Firebase בטעינת הדף
    document.addEventListener('DOMContentLoaded', initializeFirebase);
   </script>
