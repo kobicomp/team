@@ -6918,7 +6918,13 @@ function searchUserByEmailOrName() {
       resultsDiv.innerHTML = '<div style="color: var(--danger);">שגיאה בחיפוש משתמש</div>';
     });
 }
-
+// פונקציה להוספת חבר צוות
+function showAddMemberModal() {
+  document.getElementById('member-email').value = '';
+  document.getElementById('member-search-results').innerHTML = '';
+  document.getElementById('add-member-confirm-btn').disabled = true;
+  document.getElementById('team-member-modal').style.display = 'block';
+}
 // הוספת חבר לפרויקט
 function addMemberToProject() {
   const addButton = document.getElementById('add-member-confirm-btn');
