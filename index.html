@@ -3666,11 +3666,23 @@
     
         // פונקציה לעדכון תפריט המשתמש בהתאם לסוג המשתמש
         function updateUserMenuForAdmin() {
-          if (currentUser && currentUser.isAdmin) {
-            // הצגת הגדרות מנהל
-            document.getElementById('admin-settings-link').parentElement.classList.remove('hidden');
-          }
+    console.log('updateUserMenuForAdmin: מעדכן תפריט למנהל');
+    try {
+      if (currentUser && currentUser.isAdmin) {
+        // הצגת הגדרות מנהל
+        const adminLink = document.getElementById('admin-settings-link');
+        if (adminLink && adminLink.parentElement) {
+          adminLink.parentElement.classList.remove('hidden');
+          console.log('updateUserMenuForAdmin: הצגת קישור הגדרות מנהל');
+        } else {
+          console.error('updateUserMenuForAdmin: לא נמצא אלמנט admin-settings-link');
         }
+      }
+      console.log('updateUserMenuForAdmin: עדכון תפריט הסתיים');
+    } catch (error) {
+      console.error('updateUserMenuForAdmin: שגיאה בעדכון תפריט מנהל:', error);
+    }
+  }
     
         function approveUserRegistration(userId, userEmail) {
           if (confirm(`האם אתה בטוח שברצונך לאשר את המשתמש ${userEmail}?`)) {
@@ -4301,111 +4313,126 @@
   
       // הצגת הפרויקטים בממשק
       function displayProjects(projects) {
-        const projectsList = document.getElementById('projects-list');
-  
-        if (projects.length === 0) {
-          projectsList.innerHTML = `
-            <div class="card" style="text-align: center; padding: 30px; grid-column: 1 / -1;">
-              <div style="font-size: 48px; color: var(--gray); margin-bottom: 15px;">
-                <i class="fas fa-project-diagram"></i>
-              </div>
-              <h3>אין פרויקטים להצגה</h3>
-              <p>לחץ על "פרויקט חדש" כדי להתחיל</p>
-            </div>
-          `;
-          return;
+  console.log('displayProjects: מתחיל הצגת פרויקטים', projects.length);
+  const projectsList = document.getElementById('projects-list');
+
+  if (projects.length === 0) {
+    projectsList.innerHTML = `
+      <div class="card" style="text-align: center; padding: 30px; grid-column: 1 / -1;">
+        <div style="font-size: 48px; color: var(--gray); margin-bottom: 15px;">
+          <i class="fas fa-project-diagram"></i>
+        </div>
+        <h3>אין פרויקטים להצגה</h3>
+        <p>לחץ על "פרויקט חדש" כדי להתחיל</p>
+      </div>
+    `;
+    console.log('displayProjects: אין פרויקטים להצגה');
+    return;
+  }
+
+  try {
+    projectsList.innerHTML = '';
+
+    console.log('displayProjects: מתחיל לעבור על הפרויקטים');
+    projects.forEach((project, index) => {
+      console.log(`displayProjects: מוסיף פרויקט ${index + 1}/${projects.length}`);
+      const { id, data, role, type } = project;
+
+      // חישוב התקדמות הפרויקט
+      let progress = 0;
+      let tasksCount = 0;
+      let completedCount = 0;
+
+      // הצגת תאריך בפורמט מקומי
+      let deadlineText = 'אין תאריך יעד';
+      let isOverdue = false;
+
+      if (data.deadline) {
+        const date = new Date(data.deadline);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        deadlineText = date.toLocaleDateString('he-IL');
+
+        if (date < today) {
+          isOverdue = true;
         }
-  
-        projectsList.innerHTML = '';
-  
-        projects.forEach(project => {
-          const { id, data, role, type } = project;
-  
-          // חישוב התקדמות הפרויקט
-          let progress = 0;
-          let tasksCount = 0;
-          let completedCount = 0;
-  
-          // הצגת תאריך בפורמט מקומי
-          let deadlineText = 'אין תאריך יעד';
-          let isOverdue = false;
-  
-          if (data.deadline) {
-            const date = new Date(data.deadline);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-  
-            deadlineText = date.toLocaleDateString('he-IL');
-  
-            if (date < today) {
-              isOverdue = true;
-            }
+      }
+
+      try {
+        // יצירת כרטיס פרויקט
+        const projectCard = document.createElement('div');
+        projectCard.className = 'card project-card';
+
+        // תוכן הכרטיס
+        projectCard.innerHTML = `
+          <div class="project-card-header">
+            <div class="project-type-badge ${data.type === 'personal' ? 'personal-project' : 'team-project'}">
+              ${data.type === 'personal' ? 'אישי' : 'צוותי'}
+            </div>
+            <h3 class="project-card-title">${data.name}</h3>
+          </div>
+          <div class="project-card-body">
+            <div class="project-card-description">${data.description || 'אין תיאור'}</div>
+            <div class="project-progress">
+              <div class="progress-bar-container">
+                <div class="progress-bar" style="width: ${progress}%;"></div>
+              </div>
+              <div class="progress-text">
+                <span>${progress}% הושלם</span>
+                <span>${completedCount}/${tasksCount} משימות</span>
+              </div>
+            </div>
+          </div>
+          <div class="project-card-footer">
+            <div>
+              <div ${isOverdue ? 'style="color: var(--danger);"' : ''}>
+                <i class="fas fa-calendar-alt"></i> ${deadlineText}
+              </div>
+            </div>
+            <div>
+              <span class="badge ${role === 'owner' ? 'badge-owner' : 'badge-member'}">${role === 'owner' ? 'מנהל' : 'חבר'}</span>
+              ${role === 'owner' ?
+                `<button class="btn btn-sm btn-icon btn-danger delete-project" data-id="${id}" title="מחק פרויקט">
+                  <i class="fas fa-trash"></i>
+                </button>` : ''}
+            </div>
+          </div>
+        `;
+
+        // אירוע לחיצה על כרטיס פרויקט
+        projectCard.addEventListener('click', (e) => {
+          if (!e.target.closest('.delete-project')) {
+            openProject(id, role);
           }
-  
-          // יצירת כרטיס פרויקט
-          const projectCard = document.createElement('div');
-          projectCard.className = 'card project-card';
-  
-          // תוכן הכרטיס
-          projectCard.innerHTML = `
-            <div class="project-card-header">
-              <div class="project-type-badge ${data.type === 'personal' ? 'personal-project' : 'team-project'}">
-                ${data.type === 'personal' ? 'אישי' : 'צוותי'}
-              </div>
-              <h3 class="project-card-title">${data.name}</h3>
-            </div>
-            <div class="project-card-body">
-              <div class="project-card-description">${data.description || 'אין תיאור'}</div>
-              <div class="project-progress">
-                <div class="progress-bar-container">
-                  <div class="progress-bar" style="width: ${progress}%;"></div>
-                </div>
-                <div class="progress-text">
-                  <span>${progress}% הושלם</span>
-                  <span>${completedCount}/${tasksCount} משימות</span>
-                </div>
-              </div>
-            </div>
-            <div class="project-card-footer">
-              <div>
-                <div ${isOverdue ? 'style="color: var(--danger);"' : ''}>
-                  <i class="fas fa-calendar-alt"></i> ${deadlineText}
-                </div>
-              </div>
-              <div>
-                <span class="badge ${role === 'owner' ? 'badge-owner' : 'badge-member'}">${role === 'owner' ? 'מנהל' : 'חבר'}</span>
-                ${role === 'owner' ?
-                  `<button class="btn btn-sm btn-icon btn-danger delete-project" data-id="${id}" title="מחק פרויקט">
-                    <i class="fas fa-trash"></i>
-                  </button>` : ''}
-              </div>
-            </div>
-          `;
-  
-          // אירוע לחיצה על כרטיס פרויקט
-          projectCard.addEventListener('click', (e) => {
-            if (!e.target.closest('.delete-project')) {
-              openProject(id, role);
+        });
+
+        // אירוע מחיקת פרויקט
+        const deleteButton = projectCard.querySelector('.delete-project');
+        if (deleteButton) {
+          deleteButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('האם אתה בטוח שברצונך למחוק פרויקט זה?')) {
+              deleteProject(id);
             }
           });
-  
-          // אירוע מחיקת פרויקט
-          const deleteButton = projectCard.querySelector('.delete-project');
-          if (deleteButton) {
-            deleteButton.addEventListener('click', (e) => {
-              e.stopPropagation();
-              if (confirm('האם אתה בטוח שברצונך למחוק פרויקט זה?')) {
-                deleteProject(id);
-              }
-            });
-          }
-  
-          projectsList.appendChild(projectCard);
-  
-          // טעינת נתוני התקדמות
-          loadProjectProgress(id, projectCard);
-        });
+        }
+
+        projectsList.appendChild(projectCard);
+
+        // טעינת נתוני התקדמות
+        loadProjectProgress(id, projectCard);
+      } catch (cardError) {
+        console.error(`displayProjects: שגיאה ביצירת כרטיס פרויקט ${index}:`, cardError);
       }
+    });
+
+    console.log('displayProjects: סיום הצגת פרויקטים');
+  } catch (error) {
+    console.error('displayProjects: שגיאה כללית בהצגת פרויקטים:', error);
+    projectsList.innerHTML = '<div>שגיאה בהצגת פרויקטים. נסה לרענן את הדף.</div>';
+  }
+}
   
       // טעינת התקדמות פרויקט
       function loadProjectProgress(projectId, projectCard) {
@@ -5333,57 +5360,78 @@ function loadTasksByTagChart() {
 
 // פונקציות לניהול פרויקטים
 function loadProjects() {
+  console.log('loadProjects: מתחיל טעינת פרויקטים');
   showLoader();
   const projectsList = document.getElementById('projects-list');
   projectsList.innerHTML = '<div>טוען פרויקטים...</div>';
 
-  // תחילה טען רק פרויקטים שהמשתמש הוא הבעלים שלהם
-  db.collection('projects')
-    .where('userId', '==', currentUser.uid)
-    .get()
-    .then(snapshot => {
-      let allProjectsList = [];
+  try {
+    // תחילה טען רק פרויקטים שהמשתמש הוא הבעלים שלהם
+    console.log('loadProjects: מבצע שאילתה לפרויקטים של המשתמש', currentUser.uid);
+    db.collection('projects')
+      .where('userId', '==', currentUser.uid)
+      .get()
+      .then(snapshot => {
+        console.log('loadProjects: קיבלתי תוצאות פרויקטים', snapshot.size);
+        let allProjectsList = [];
 
-      snapshot.forEach(doc => {
-        const project = doc.data();
-        allProjectsList.push({
-          id: doc.id,
-          data: project,
-          role: 'owner',
-          type: project.type || 'personal'
+        snapshot.forEach(doc => {
+          const project = doc.data();
+          allProjectsList.push({
+            id: doc.id,
+            data: project,
+            role: 'owner',
+            type: project.type || 'personal'
+          });
         });
+
+        // שמירת הפרויקטים במשתנה גלובלי
+        console.log('loadProjects: שומר פרויקטים במשתנה גלובלי', allProjectsList.length);
+        allProjects = allProjectsList;
+
+        // סינון לפי הסוג שנבחר אם צריך
+        if (currentFilter !== "all") {
+          console.log('loadProjects: מסנן לפי הסוג', currentFilter);
+          allProjectsList = allProjectsList.filter(p => p.data.type === currentFilter);
+        }
+
+        // סינון לפי חיפוש אם קיים
+        const searchTerm = document.getElementById('search-projects').value.trim().toLowerCase();
+        if (searchTerm) {
+          console.log('loadProjects: מסנן לפי מונח חיפוש', searchTerm);
+          allProjectsList = filterProjectsBySearchTerm(allProjectsList, searchTerm);
+        }
+
+        // הצגת הפרויקטים
+        console.log('loadProjects: מציג פרויקטים', allProjectsList.length);
+        try {
+          displayProjects(allProjectsList);
+          console.log('loadProjects: הצגת פרויקטים הסתיימה בהצלחה');
+        } catch (displayError) {
+          console.error('loadProjects: שגיאה בהצגת פרויקטים:', displayError);
+          projectsList.innerHTML = '<div>שגיאה בהצגת פרויקטים. נסה לרענן את הדף.</div>';
+        }
+        
+        hideLoader();
+        console.log('loadProjects: טעינת פרויקטים הסתיימה, הסתרת לוודר');
+
+        // רק אחרי שהצגת את הפרויקטים של המשתמש, נסה לטעון גם פרויקטים שהוא חבר בהם
+        if (currentFilter === "all" || currentFilter === "team") {
+          console.log('loadProjects: מתחיל לטעון פרויקטים צוותיים');
+          loadTeamProjects();
+        }
+      })
+      .catch(error => {
+        console.error("loadProjects: שגיאה בטעינת פרויקטים:", error);
+        projectsList.innerHTML = '<div>שגיאה בטעינת פרויקטים. נסה שוב מאוחר יותר.</div>';
+        hideLoader();
       });
-
-      // שמירת הפרויקטים במשתנה גלובלי
-      allProjects = allProjectsList;
-
-      // סינון לפי הסוג שנבחר אם צריך
-      if (currentFilter !== "all") {
-        allProjectsList = allProjectsList.filter(p => p.data.type === currentFilter);
-      }
-
-      // סינון לפי חיפוש אם קיים
-      const searchTerm = document.getElementById('search-projects').value.trim().toLowerCase();
-      if (searchTerm) {
-        allProjectsList = filterProjectsBySearchTerm(allProjectsList, searchTerm);
-      }
-
-      // הצגת הפרויקטים
-      displayProjects(allProjectsList);
-      hideLoader();
-
-      // רק אחרי שהצגת את הפרויקטים של המשתמש, נסה לטעון גם פרויקטים שהוא חבר בהם
-      if (currentFilter === "all" || currentFilter === "team") {
-        loadTeamProjects();
-      }
-    })
-    .catch(error => {
-      console.error("Error loading projects:", error);
-      projectsList.innerHTML = '<div>שגיאה בטעינת פרויקטים. נסה שוב מאוחר יותר.</div>';
-      hideLoader();
-    });
+  } catch (error) {
+    console.error("loadProjects: שגיאה כללית:", error);
+    projectsList.innerHTML = '<div>שגיאה בטעינת פרויקטים. נסה שוב מאוחר יותר.</div>';
+    hideLoader();
+  }
 }
-
 // פונקציה לסינון פרויקטים לפי מונח חיפוש
 function filterProjectsBySearchTerm(projects, searchTerm) {
   return projects.filter(project => {
