@@ -2754,15 +2754,25 @@
     // בדיקה אם כבר אותחל
     if (firebase.apps && firebase.apps.length > 0) {
       console.log('Firebase כבר אותחל, משתמש בחיבור קיים');
-      auth = firebase.auth();
-      db = firebase.firestore();
-      storage = firebase.storage();
-      startAuthListener();
+      try {
+        auth = firebase.auth();
+        db = firebase.firestore();
+        storage = firebase.storage();
+        console.log('השגת משתני Firebase בהצלחה, מתחיל מאזין אימות');
+        startAuthListener();
+      } catch (error) {
+        console.error('שגיאה בהשגת משתני Firebase:', error);
+        document.getElementById('auth-error').textContent = 'שגיאה באתחול המערכת: ' + error.message;
+        document.getElementById('auth-error').classList.remove('hidden');
+        hideLoader();
+      }
       return;
     }
   
+    console.log('מתחיל לטעון תצורת Firebase');
     fetch('/api/firebase-config')
       .then(response => {
+        console.log('קיבלתי תשובה מהשרת:', response.status);
         if (!response.ok) {
           throw new Error('בעיה בטעינת תצורת Firebase: ' + response.status);
         }
@@ -2772,18 +2782,24 @@
         console.log('תצורת Firebase נטענה בהצלחה');
   
         // שמירת אימייל האדמין מהתשובה
+        console.log('אימייל האדמין:', data.adminEmail);
         adminEmail = data.adminEmail;
   
         // אתחול Firebase עם תצורה שהתקבלה
         try {
+          console.log('מתחיל אתחול Firebase עם התצורה');
           firebase.initializeApp(data.firebaseConfig);
+          console.log('Firebase אותחל בהצלחה');
   
           // קיצורי דרך לשירותים
+          console.log('משיג מופעי שירותים');
           auth = firebase.auth();
           db = firebase.firestore();
           storage = firebase.storage();
+          console.log('השגת מופעי שירותים בהצלחה');
   
           // מעקב אחר התחברות המשתמש
+          console.log('מתחיל מאזין אימות');
           startAuthListener();
         } catch (error) {
           console.error('שגיאה באתחול Firebase:', error);
@@ -2800,177 +2816,208 @@
       });
   }
       // פונקציה למעקב אחר מצב התחברות המשתמש
-      // פונקציה למעקב אחר מצב התחברות המשתמש
-  function startAuthListener() {
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        // המשתמש מחובר - נבדוק אם הוא מורשה
-        showLoader();
-  
-        // בדיקת סטטוס המשתמש
-        db.collection('users').doc(user.uid).get()
-          .then(doc => {
-            let userData;
-  
-            if (doc.exists) {
-              userData = doc.data();
-  
-              // לוגיקה מתוקנת לניהול סטטוס המשתמש
-              if (user.email === adminEmail || (userData && userData.isAdmin)) {
-                // המשתמש הוא המנהל או משתמש עם הרשאות מנהל
-                currentUser = {
-                  uid: user.uid,
-                  email: user.email,
-                  displayName: userData.displayName || user.email.split('@')[0],
-                  isAdmin: true
-                };
-  
-                // עדכון ממשק המשתמש
-                document.getElementById('auth-section').classList.add('hidden');
-                document.getElementById('app-section').classList.remove('hidden');
-                document.getElementById('user-name').textContent = currentUser.displayName;
-                document.getElementById('user-avatar').textContent = (currentUser.displayName.charAt(0) || "?").toUpperCase();
-  
-                // עדכון תפריט למנהל
-                updateUserMenuForAdmin();
-  
-                // טעינת העדפות משתמש
-                loadUserPreferences();
-  
-                // טעינת הפרויקטים של המשתמש
-                loadProjects();
-                
-                hideLoader();
-              } else if (userData.status === 'approved') {
-                // המשתמש מאושר
-                currentUser = {
-                  uid: user.uid,
-                  email: user.email,
-                  displayName: userData.displayName || user.email.split('@')[0],
-                  isAdmin: false
-                };
-  
-                // עדכון ממשק המשתמש
-                document.getElementById('auth-section').classList.add('hidden');
-                document.getElementById('app-section').classList.remove('hidden');
-                document.getElementById('user-name').textContent = currentUser.displayName;
-                document.getElementById('user-avatar').textContent = (currentUser.displayName.charAt(0) || "?").toUpperCase();
-  
-                // הסתרת אפשרויות למנהל
-                document.getElementById('admin-settings-link').parentElement.classList.add('hidden');
-  
-                // טעינת העדפות משתמש
-                loadUserPreferences();
-  
-                // טעינת הפרויקטים של המשתמש
-                loadProjects();
-                
-                hideLoader();
-              } else if (userData.status === 'pending') {
-                // המשתמש ממתין לאישור
-                document.getElementById('auth-error').textContent = 'החשבון שלך ממתין לאישור מנהל המערכת. נסה שוב מאוחר יותר.';
-                document.getElementById('auth-error').classList.remove('hidden');
-                hideLoader();
-                // ניתוק המשתמש
-                auth.signOut();
-              } else {
-                // המשתמש נדחה או במצב לא תקין
-                document.getElementById('auth-error').textContent = 'אין לך הרשאת גישה למערכת.';
-                document.getElementById('auth-error').classList.remove('hidden');
-                hideLoader();
-                // ניתוק המשתמש
-                auth.signOut();
-              }
-            } else {
-              // אין מידע על המשתמש - יצירת רשומה חדשה
-              const newUserData = {
-                userId: user.uid,
-                email: user.email,
-                displayName: user.email.split('@')[0],
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-              };
-              
-              // אם זה המנהל, ניצור רשומה עם הרשאות מנהל ואישור אוטומטי
-              if (user.email === adminEmail) {
-                newUserData.isAdmin = true;
-                newUserData.status = 'approved';
-                
-                db.collection('users').doc(user.uid).set(newUserData)
-                  .then(() => {
-                    // המשתמש הוא המנהל
-                    currentUser = {
-                      uid: user.uid,
-                      email: user.email,
-                      displayName: newUserData.displayName,
-                      isAdmin: true
-                    };
-  
-                    // עדכון ממשק המשתמש
-                    document.getElementById('auth-section').classList.add('hidden');
-                    document.getElementById('app-section').classList.remove('hidden');
-                    document.getElementById('user-name').textContent = currentUser.displayName;
-                    document.getElementById('user-avatar').textContent = (currentUser.displayName.charAt(0) || "?").toUpperCase();
-  
-                    // עדכון תפריט למנהל
-                    updateUserMenuForAdmin();
-  
-                    // טעינת העדפות משתמש
-                    loadUserPreferences();
-  
-                    // טעינת הפרויקטים של המשתמש
-                    loadProjects();
-                    
-                    hideLoader();
-                  })
-                  .catch(error => {
-                    console.error("Error creating admin user record:", error);
-                    document.getElementById('auth-error').textContent = 'שגיאה ביצירת רשומת משתמש מנהל: ' + error.message;
-                    document.getElementById('auth-error').classList.remove('hidden');
-                    hideLoader();
-                    auth.signOut();
-                  });
-              } else {
-                // משתמש חדש שאינו מנהל
-                newUserData.isAdmin = false;
-                newUserData.status = 'pending';
-                
-                db.collection('users').doc(user.uid).set(newUserData)
-                  .then(() => {
-                    document.getElementById('auth-error').textContent = 'החשבון שלך ממתין לאישור מנהל המערכת. נסה שוב מאוחר יותר.';
-                    document.getElementById('auth-error').classList.remove('hidden');
-                    hideLoader();
-                    // ניתוק המשתמש
-                    auth.signOut();
-                  })
-                  .catch(error => {
-                    console.error("Error creating regular user record:", error);
-                    document.getElementById('auth-error').textContent = 'שגיאה ביצירת רשומת משתמש: ' + error.message;
-                    document.getElementById('auth-error').classList.remove('hidden');
-                    hideLoader();
-                    auth.signOut();
-                  });
-              }
-            }
-          })
-          .catch(error => {
-            hideLoader();
-            console.error("Error checking user status:", error);
-            document.getElementById('auth-error').textContent = 'שגיאה בבדיקת הרשאות: ' + error.message;
-            document.getElementById('auth-error').classList.remove('hidden');
-            // ניתוק המשתמש במקרה של שגיאה
-            auth.signOut();
-          });
-      } else {
-        // המשתמש לא מחובר
-        currentUser = null;
-        document.getElementById('auth-section').classList.remove('hidden');
-        document.getElementById('app-section').classList.add('hidden');
-        document.getElementById('auth-error').classList.add('hidden');
+      function startAuthListener() {
+      console.log('startAuthListener: מתחיל מאזין אימות');
+      
+      // טיימר בטיחות שיפעל אם התהליך נתקע
+      const safetyTimer = setTimeout(() => {
+        console.error('startAuthListener: פסק זמן - מאזין האימות לא הגיב תוך 15 שניות');
+        document.getElementById('auth-error').textContent = 'האימות נתקע. נסה לרענן את הדף.';
+        document.getElementById('auth-error').classList.remove('hidden');
         hideLoader();
-      }
-    });
-  }
-  
+      }, 15000);
+      
+      auth.onAuthStateChanged(user => {
+        console.log('startAuthListener: שינוי מצב אימות התקבל', user ? `משתמש קיים: ${user.email}` : 'אין משתמש');
+        clearTimeout(safetyTimer); // מבטל את טיימר הבטיחות כי אירוע האימות התרחש
+        
+        if (user) {
+          // המשתמש מחובר - נבדוק אם הוא מורשה
+          showLoader();
+          console.log('startAuthListener: בודק הרשאות משתמש', user.uid);
+    
+          // בדיקת סטטוס המשתמש
+          db.collection('users').doc(user.uid).get()
+            .then(doc => {
+              console.log('startAuthListener: תשובה מקולקציית המשתמשים התקבלה', doc.exists ? 'מסמך קיים' : 'מסמך לא קיים');
+              
+              if (doc.exists) {
+                const userData = doc.data();
+                console.log('startAuthListener: נתוני משתמש:', userData.status);
+    
+                if (user.email === adminEmail || (userData && userData.isAdmin)) {
+                  console.log('startAuthListener: משתמש זוהה כמנהל');
+                  // המשתמש הוא המנהל או משתמש עם הרשאות מנהל
+                  currentUser = {
+                    uid: user.uid,
+                    email: user.email,
+                    displayName: userData.displayName || user.email.split('@')[0],
+                    isAdmin: true
+                  };
+    
+                  // עדכון ממשק המשתמש
+                  document.getElementById('auth-section').classList.add('hidden');
+                  document.getElementById('app-section').classList.remove('hidden');
+                  document.getElementById('user-name').textContent = currentUser.displayName;
+                  document.getElementById('user-avatar').textContent = (currentUser.displayName.charAt(0) || "?").toUpperCase();
+    
+                  // עדכון תפריט למנהל
+                  updateUserMenuForAdmin();
+    
+                  // טעינת העדפות משתמש
+                  loadUserPreferences();
+    
+                  // טעינת הפרויקטים של המשתמש
+                  loadProjects();
+                  
+                  hideLoader();
+                  console.log('startAuthListener: תהליך כניסת מנהל הושלם');
+                } else if (userData.status === 'approved') {
+                  console.log('startAuthListener: משתמש מאושר - מכניס למערכת');
+                  // המשתמש מאושר
+                  currentUser = {
+                    uid: user.uid,
+                    email: user.email,
+                    displayName: userData.displayName || user.email.split('@')[0],
+                    isAdmin: false
+                  };
+    
+                  // עדכון ממשק המשתמש
+                  document.getElementById('auth-section').classList.add('hidden');
+                  document.getElementById('app-section').classList.remove('hidden');
+                  document.getElementById('user-name').textContent = currentUser.displayName;
+                  document.getElementById('user-avatar').textContent = (currentUser.displayName.charAt(0) || "?").toUpperCase();
+    
+                  // הסתרת אפשרויות למנהל
+                  document.getElementById('admin-settings-link').parentElement.classList.add('hidden');
+    
+                  // טעינת העדפות משתמש
+                  loadUserPreferences();
+    
+                  // טעינת הפרויקטים של המשתמש
+                  loadProjects();
+                  
+                  hideLoader();
+                  console.log('startAuthListener: תהליך כניסת משתמש הושלם');
+                } else if (userData.status === 'pending') {
+                  console.log('startAuthListener: משתמש בהמתנה - מציג הודעה ומנתק');
+                  // המשתמש ממתין לאישור
+                  document.getElementById('auth-error').textContent = 'החשבון שלך ממתין לאישור מנהל המערכת. נסה שוב מאוחר יותר.';
+                  document.getElementById('auth-error').classList.remove('hidden');
+                  hideLoader();
+                  // ניתוק המשתמש
+                  auth.signOut();
+                } else {
+                  console.log('startAuthListener: משתמש נדחה או סטטוס לא תקין:', userData.status);
+                  // המשתמש נדחה או במצב לא תקין
+                  document.getElementById('auth-error').textContent = 'אין לך הרשאת גישה למערכת.';
+                  document.getElementById('auth-error').classList.remove('hidden');
+                  hideLoader();
+                  // ניתוק המשתמש
+                  auth.signOut();
+                }
+              } else {
+                console.log('startAuthListener: משתמש חדש - יוצר רשומה חדשה');
+                // אין מידע על המשתמש - יצירת רשומה חדשה
+                const newUserData = {
+                  userId: user.uid,
+                  email: user.email,
+                  displayName: user.email.split('@')[0],
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // אם זה המנהל
+                if (user.email === adminEmail) {
+                  console.log('startAuthListener: משתמש חדש זוהה כמנהל');
+                  newUserData.isAdmin = true;
+                  newUserData.status = 'approved';
+                  
+                  db.collection('users').doc(user.uid).set(newUserData)
+                    .then(() => {
+                      console.log('startAuthListener: רשומת מנהל חדש נוצרה בהצלחה');
+                      // המשתמש הוא המנהל
+                      currentUser = {
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: newUserData.displayName,
+                        isAdmin: true
+                      };
+    
+                      // עדכון ממשק המשתמש
+                      document.getElementById('auth-section').classList.add('hidden');
+                      document.getElementById('app-section').classList.remove('hidden');
+                      document.getElementById('user-name').textContent = currentUser.displayName;
+                      document.getElementById('user-avatar').textContent = (currentUser.displayName.charAt(0) || "?").toUpperCase();
+    
+                      // עדכון תפריט למנהל
+                      updateUserMenuForAdmin();
+    
+                      // טעינת העדפות משתמש
+                      loadUserPreferences();
+    
+                      // טעינת הפרויקטים של המשתמש
+                      loadProjects();
+                      
+                      hideLoader();
+                    })
+                    .catch(error => {
+                      console.error("startAuthListener: שגיאה ביצירת רשומת מנהל:", error);
+                      document.getElementById('auth-error').textContent = 'שגיאה ביצירת רשומת משתמש מנהל: ' + error.message;
+                      document.getElementById('auth-error').classList.remove('hidden');
+                      hideLoader();
+                      auth.signOut();
+                    });
+                } else {
+                  // משתמש חדש שאינו מנהל
+                  console.log('startAuthListener: משתמש חדש רגיל - יוצר רשומה עם סטטוס המתנה');
+                  newUserData.isAdmin = false;
+                  newUserData.status = 'pending';
+                  
+                  db.collection('users').doc(user.uid).set(newUserData)
+                    .then(() => {
+                      console.log('startAuthListener: רשומת משתמש חדש נוצרה בהצלחה - מציג הודעת המתנה');
+                      document.getElementById('auth-error').textContent = 'החשבון שלך ממתין לאישור מנהל המערכת. נסה שוב מאוחר יותר.';
+                      document.getElementById('auth-error').classList.remove('hidden');
+                      hideLoader();
+                      // ניתוק המשתמש
+                      auth.signOut();
+                    })
+                    .catch(error => {
+                      console.error("startAuthListener: שגיאה ביצירת רשומת משתמש:", error);
+                      document.getElementById('auth-error').textContent = 'שגיאה ביצירת רשומת משתמש: ' + error.message;
+                      document.getElementById('auth-error').classList.remove('hidden');
+                      hideLoader();
+                      auth.signOut();
+                    });
+                }
+              }
+            })
+            .catch(error => {
+              console.error("startAuthListener: שגיאה בבדיקת סטטוס משתמש:", error);
+              document.getElementById('auth-error').textContent = 'שגיאה בבדיקת הרשאות: ' + error.message;
+              document.getElementById('auth-error').classList.remove('hidden');
+              hideLoader();
+              // ניתוק המשתמש במקרה של שגיאה
+              auth.signOut();
+            });
+        } else {
+          // המשתמש לא מחובר
+          console.log('startAuthListener: אין משתמש מחובר - מציג מסך התחברות');
+          currentUser = null;
+          document.getElementById('auth-section').classList.remove('hidden');
+          document.getElementById('app-section').classList.add('hidden');
+          document.getElementById('auth-error').classList.add('hidden');
+          hideLoader();
+        }
+      }, error => {
+        // טיפול בשגיאות במאזין אימות
+        console.error('startAuthListener: שגיאה במאזין אימות:', error);
+        document.getElementById('auth-error').textContent = 'שגיאה באימות: ' + error.message;
+        document.getElementById('auth-error').classList.remove('hidden');
+        hideLoader();
+        clearTimeout(safetyTimer);
+      });
+    }
       // משתנים גלובליים
       let adminEmail = null;
       let currentUser = null;
