@@ -1059,32 +1059,21 @@
       cursor: pointer;
       color: var(--danger);
     }
-    /* סגנונות לתוצאות חיפוש משתמשים */
-  .user-search-result {
-    transition: all 0.2s ease;
-    cursor: pointer;
-  }
-  
-  .user-search-result:hover {
-    background-color: #e8e8e8 !important;
-  }
-  
-  .user-search-result.selected {
-    background-color: #e1f5fe !important;
-  }
-  
-  .user-search-result.already-member {
-    cursor: not-allowed !important;
-  }
-  
-  /* סגנון שדה החיפוש */
-  #member-email {
-    padding-right: 40px; /* מרווח לאייקון חיפוש */
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23adb5bd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    background-size: 16px;
-  }
+    .user-search-result {
+      transition: all 0.2s ease;
+    }
+
+    .user-search-result:hover {
+      background-color: #e8e8e8 !important;
+    }
+
+    .user-search-result.selected {
+      background-color: #e1f5fe !important;
+    }
+
+    .user-search-result.already-member {
+      cursor: not-allowed !important;
+    }
     /* חדש - צ'אט משימה */
     .task-chat {
       max-height: 300px;
@@ -1556,30 +1545,29 @@
   </div>
 
   <!-- מודל חבר צוות -->
-  <!-- מודל חבר צוות -->
-<div id="team-member-modal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 class="modal-title">הוספת חבר צוות לפרויקט</h3>
-      <span class="modal-close">&times;</span>
-    </div>
+  <div id="team-member-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">הוספת חבר צוות לפרויקט</h3>
+        <span class="modal-close">&times;</span>
+      </div>
 
-    <div class="form-group">
-      <label id="member-email-label" for="member-email">חיפוש (אימייל או שם):</label>
-      <input type="text" id="member-email" placeholder="הזן אימייל או שם של חבר צוות">
-      <div style="font-size: 12px; color: #666; margin-top: 5px;">
-        הזן לפחות 3 תווים כדי להתחיל בחיפוש
+      <div class="form-group">
+        <label id="member-email-label" for="member-email">חיפוש (אימייל או שם):</label>
+        <input type="text" id="member-email" placeholder="הזן אימייל או שם של חבר צוות">
+        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+          הזן לפחות 3 תווים כדי להתחיל בחיפוש
+        </div>
+      </div>
+
+      <div id="member-search-results"></div>
+
+      <div class="modal-footer">
+        <button id="add-member-confirm-btn" class="btn btn-success" disabled>הוסף לפרויקט</button>
+        <button id="cancel-member-btn" class="btn btn-outline">ביטול</button>
       </div>
     </div>
-
-    <div id="member-search-results"></div>
-
-    <div class="modal-footer">
-      <button id="add-member-confirm-btn" class="btn btn-success" disabled>הוסף לפרויקט</button>
-      <button id="cancel-member-btn" class="btn btn-outline">ביטול</button>
-    </div>
   </div>
-</div>
 
   <!-- מודל צ'אט משימה -->
   <div id="task-chat-modal" class="modal">
@@ -2354,103 +2342,49 @@ function loadPendingRegistrations() {
         }
       }
       function approveUserRegistration(userId, userEmail) {
-    if (confirm(`האם אתה בטוח שברצונך לאשר את המשתמש ${userEmail}?`)) {
-      showLoader();
-      
-      console.log("מתחיל תהליך אישור משתמש:", userId, userEmail);
-  
-      // קבלת מידע קיים על המשתמש
-      db.collection('users').doc(userId).get()
-        .then(doc => {
-          if (!doc.exists) {
-            throw new Error('משתמש לא קיים במערכת');
-          }
-          
-          // שילוב המידע הקיים עם העדכון
-          const userData = doc.data();
-          const updatedData = {
-            status: 'approved',
-            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            approvedBy: currentUser.uid,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          };
-          
-          console.log("מעדכן סטטוס משתמש:", updatedData);
-          
-          // עדכון המשתמש
-          return db.collection('users').doc(userId).update(updatedData)
-            .then(() => {
-              console.log("עדכון סטטוס משתמש בוצע בהצלחה");
-              
-              // הוספת המשתמש לאינדקס החיפוש
-              const fullUserData = { ...userData, ...updatedData };
-              return updateUserSearchIndex(userId, fullUserData);
-            });
+      if (confirm(`האם אתה בטוח שברצונך לאשר את המשתמש ${userEmail}?`)) {
+        showLoader();
+
+        db.collection('users').doc(userId).update({
+          status: 'approved',
+          approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          approvedBy: currentUser.uid
         })
         .then(() => {
-          console.log("אישור משתמש והוספה לאינדקס הושלמו בהצלחה");
           hideLoader();
           showNotification('משתמש אושר', `המשתמש ${userEmail} אושר בהצלחה`, 'success');
-          
-          // רענון הרשימה
-          loadPendingRegistrations();
-          
-          // רישום פעילות
-          try {
-            logActivity('אישר משתמש', userId, `אישר את המשתמש ${userEmail}`);
-          } catch (e) {
-            console.warn("לא ניתן לתעד פעילות:", e);
-          }
+          loadPendingRegistrations(); // רענון הרשימה
         })
         .catch(error => {
-          console.error("שגיאה באישור משתמש:", error);
           hideLoader();
+          console.error("Error approving user:", error);
           showNotification('שגיאה', 'שגיאה באישור המשתמש: ' + error.message, 'danger');
         });
-    }
-  }
-
-  function rejectUserRegistration(userId, userEmail) {
-  if (confirm(`האם אתה בטוח שברצונך לדחות את המשתמש ${userEmail}?`)) {
-    showLoader();
-    
-    console.log("מתחיל תהליך דחיית משתמש:", userId, userEmail);
-
-    // קבלת מידע קיים על המשתמש
-    db.collection('users').doc(userId).update({
-      status: 'rejected',
-      rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      rejectedBy: currentUser.uid,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    })
-    .then(() => {
-      console.log("עדכון סטטוס משתמש לדחוי בוצע בהצלחה");
-      
-      // הסר את המשתמש מאינדקס החיפוש אם קיים
-      return removeUserFromSearchIndex(userId);
-    })
-    .then(() => {
-      console.log("דחיית משתמש הושלמה בהצלחה");
-      hideLoader();
-      showNotification('משתמש נדחה', `המשתמש ${userEmail} נדחה בהצלחה`, 'warning');
-      
-      // רענון הרשימה
-      loadPendingRegistrations();
-      
-      // רישום פעילות
-      try {
-        logActivity('דחה משתמש', userId, `דחה את המשתמש ${userEmail}`);
-      } catch (e) {
-        console.warn("לא ניתן לתעד פעילות:", e);
       }
-    })
-    .catch(error => {
-      console.error("שגיאה בדחיית משתמש:", error);
-      hideLoader();
-      showNotification('שגיאה', 'שגיאה בדחיית המשתמש: ' + error.message, 'danger');
-    });
-  }
-}
+    }
+
+    function rejectUserRegistration(userId, userEmail) {
+      if (confirm(`האם אתה בטוח שברצונך לדחות את המשתמש ${userEmail}?`)) {
+        showLoader();
+
+        db.collection('users').doc(userId).update({
+          status: 'rejected',
+          rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          rejectedBy: currentUser.uid
+        })
+        .then(() => {
+          hideLoader();
+          showNotification('משתמש נדחה', `המשתמש ${userEmail} נדחה בהצלחה`, 'success');
+          loadPendingRegistrations(); // רענון הרשימה
+        })
+        .catch(error => {
+          hideLoader();
+          console.error("Error rejecting user:", error);
+          showNotification('שגיאה', 'שגיאה בדחיית המשתמש: ' + error.message, 'danger');
+        });
+      }
+    }
+
     function rejectUserRegistration(userId, userEmail) {
       if (confirm(`האם אתה בטוח שברצונך לדחות את המשתמש ${userEmail}?`)) {
         showLoader();
@@ -3721,83 +3655,7 @@ function displayProjects(projects) {
         showNotification('שגיאה בטעינת משימות', error.message, 'danger');
       });
     }
-    // פונקציה ליצירת אינדקס החיפוש הראשוני - יש להפעיל רק פעם אחת
-    function createInitialUserSearchIndex() {
-      console.log("יוצר אינדקס חיפוש משתמשים ראשוני...");
-      showLoader();
-      
-      // איסוף כל המשתמשים המאושרים
-      db.collection('users')
-        .where('status', '==', 'approved')
-        .get()
-        .then(snapshot => {
-          const batch = db.batch();
-          let count = 0;
-          
-          snapshot.forEach(doc => {
-            const userData = doc.data();
-            count++;
-            
-            // יצירת רשומת אינדקס עם מידע מינימלי
-            const indexRef = db.collection('user_search_index').doc(doc.id);
-            batch.set(indexRef, {
-              userId: doc.id,
-              email: userData.email,
-              displayName: userData.displayName || userData.email.split('@')[0],
-              status: 'approved',
-              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-          });
-          
-          return batch.commit().then(() => {
-            hideLoader();
-            console.log(`אינדקס נוצר בהצלחה עם ${count} משתמשים`);
-            showNotification('אינדקס נוצר', `אינדקס חיפוש המשתמשים נוצר בהצלחה עם ${count} משתמשים`, 'success');
-          });
-        })
-        .catch(error => {
-          hideLoader();
-          console.error("שגיאה ביצירת אינדקס חיפוש:", error);
-          showNotification('שגיאה', 'שגיאה ביצירת אינדקס חיפוש המשתמשים', 'danger');
-        });
-    }
-    
-    // פונקציה לעדכון אינדקס החיפוש עבור משתמש בודד
-    function updateUserSearchIndex(userId, userData) {
-      console.log("מעדכן אינדקס חיפוש עבור משתמש:", userId);
-      
-      // וודא שהמשתמש מאושר
-      if (userData.status !== 'approved') {
-        console.log("המשתמש לא מאושר, מסיר מאינדקס החיפוש");
-        // אם המשתמש לא מאושר, מחק אותו מהאינדקס אם קיים
-        return db.collection('user_search_index').doc(userId).delete().catch(e => {
-          console.error("שגיאה במחיקת משתמש מאינדקס החיפוש:", e);
-        });
-      }
-      
-      console.log("מעדכן משתמש באינדקס החיפוש");
-      // עדכון האינדקס עם המידע העדכני
-      return db.collection('user_search_index').doc(userId).set({
-        userId: userId,
-        email: userData.email,
-        displayName: userData.displayName || userData.email.split('@')[0],
-        status: 'approved',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }).catch(error => {
-        console.error("שגיאה בעדכון אינדקס חיפוש:", error);
-      });
-    }
-    
-    // פונקציה להסרת משתמש מאינדקס החיפוש
-    function removeUserFromSearchIndex(userId) {
-      console.log("מסיר משתמש מאינדקס החיפוש:", userId);
-      
-      return db.collection('user_search_index').doc(userId).delete()
-        .catch(error => {
-          console.error("שגיאה בהסרת משתמש מאינדקס החיפוש:", error);
-        });
-    }
-    
+
     function updateProjectsDropdown() {
       const projectSelect = document.getElementById('dashboard-filter-project');
       projectSelect.innerHTML = '<option value="all">כל הפרויקטים</option>';
@@ -4135,66 +3993,62 @@ function displayProjects(projects) {
 
     // חיפוש משתמש לפי אימייל
     // חיפוש משתמש לפי אימייל או שם משתמש
-    // חיפוש משתמש לפי אימייל או שם משתמש
   function searchUserByEmailOrName() {
     const searchTerm = document.getElementById('member-email').value.trim();
     const resultsDiv = document.getElementById('member-search-results');
-  
+
     if (!searchTerm || searchTerm.length < 3) {
       resultsDiv.innerHTML = '<div>הזן לפחות 3 תווים לחיפוש</div>';
-      document.getElementById('add-member-confirm-btn').disabled = true;
       return;
     }
-  
+
     resultsDiv.innerHTML = '<div class="text-center">מחפש משתמש...</div>';
-    document.getElementById('add-member-confirm-btn').disabled = true;
-  
+
     // שינוי שם האלמנט בממשק
-    const emailLabel = document.getElementById('member-email-label');
-    if (emailLabel) {
-      emailLabel.textContent = 'חיפוש (אימייל או שם):';
-    }
-  
+    document.getElementById('member-email-label').textContent = 'חיפוש (אימייל או שם):';
+
     // חיפוש לפי אימייל מדויק
-    const emailQuery = db.collection('user_search_index')
+    const emailQuery = db.collection('users')
       .where('email', '==', searchTerm.toLowerCase())
+      .where('status', '==', 'approved')  // רק משתמשים מאושרים
       .limit(5);
-    
+
     // חיפוש לפי שם משתמש
-    const nameQuery = db.collection('user_search_index')
+    const nameQuery = db.collection('users')
       .where('displayName', '>=', searchTerm)
-      .where('displayName', '<=', searchTerm + '\uf8ff')
+      .where('displayName', '<=', searchTerm + '\uf8ff') // טריק לחיפוש prefix
+      .where('status', '==', 'approved')  // רק משתמשים מאושרים
       .limit(5);
-  
+
     // ביצוע שני החיפושים במקביל
     Promise.all([emailQuery.get(), nameQuery.get()])
       .then(([emailResults, nameResults]) => {
         const uniqueUsers = new Map(); // למניעת כפילויות
-        
+
         // הוספת תוצאות חיפוש לפי אימייל
         emailResults.forEach(doc => {
           uniqueUsers.set(doc.id, doc.data());
         });
-        
+
         // הוספת תוצאות חיפוש לפי שם
         nameResults.forEach(doc => {
           uniqueUsers.set(doc.id, doc.data());
         });
-        
+
         if (uniqueUsers.size === 0) {
           resultsDiv.innerHTML = '<div style="color: var(--danger); padding: 10px; background-color: #f8d7da; border-radius: 4px; margin-top: 10px;">משתמש לא נמצא. הזמן אותו להירשם למערכת.</div>';
           document.getElementById('add-member-confirm-btn').disabled = true;
           return;
         }
-  
+
         let resultsHTML = '';
         let foundUsers = [];
-        
+
         // עיבוד התוצאות
         uniqueUsers.forEach((userData, userId) => {
           // בדיקה אם המשתמש כבר בפרויקט
           const isMember = currentProjectMembers.some(member => member.userId === userId);
-          
+
           foundUsers.push({
             userId: userId,
             email: userData.email,
@@ -4202,16 +4056,16 @@ function displayProjects(projects) {
             isMember: isMember
           });
         });
-        
+
         // הצגת התוצאות
         if (foundUsers.length > 0) {
           resultsHTML = '<div style="margin-top: 15px;">';
-          
+
           foundUsers.forEach(user => {
             resultsHTML += `
-              <div class="user-search-result ${user.isMember ? 'already-member' : ''}" 
-                   data-id="${user.userId}" 
-                   data-email="${user.email}" 
+              <div class="user-search-result ${user.isMember ? 'already-member' : ''}"
+                   data-id="${user.userId}"
+                   data-email="${user.email}"
                    data-name="${user.displayName}"
                    style="background-color: #f0f0f0; padding: 15px; border-radius: var(--radius); margin-bottom: 10px; cursor: pointer; ${user.isMember ? 'opacity: 0.7;' : ''}">
                 <div style="font-weight: 500; font-size: 16px;">${user.displayName}</div>
@@ -4220,31 +4074,31 @@ function displayProjects(projects) {
               </div>
             `;
           });
-          
+
           resultsHTML += '</div>';
           resultsDiv.innerHTML = resultsHTML;
-          
+
           // הוספת אירוע בחירת משתמש
           document.querySelectorAll('.user-search-result').forEach(result => {
             result.addEventListener('click', function() {
               if (this.classList.contains('already-member')) {
                 return; // אם כבר חבר אז לא עושים כלום
               }
-              
+
               // סימון כל התוצאות כלא נבחרות
               document.querySelectorAll('.user-search-result').forEach(el => {
                 el.classList.remove('selected');
                 el.style.border = 'none';
               });
-              
+
               // סימון הנבחר
               this.classList.add('selected');
               this.style.border = '2px solid var(--primary)';
-              
+
               // הפעלת כפתור ההוספה
               const addButton = document.getElementById('add-member-confirm-btn');
               addButton.disabled = false;
-              
+
               // שמירת פרטי המשתמש הנבחר בכפתור
               addButton.dataset.id = this.dataset.id;
               addButton.dataset.email = this.dataset.email;
@@ -4255,32 +4109,32 @@ function displayProjects(projects) {
       })
       .catch(error => {
         console.error("Error searching for user:", error);
-        resultsDiv.innerHTML = '<div style="color: var(--danger);">שגיאה בחיפוש משתמש. נסה שוב מאוחר יותר.</div>';
+        resultsDiv.innerHTML = '<div style="color: var(--danger);">שגיאה בחיפוש משתמש</div>';
       });
   }
     // הוספת חבר לפרויקט
     function addMemberToProject() {
     const addButton = document.getElementById('add-member-confirm-btn');
-    
+
     // בדיקה אם נבחר משתמש
     if (addButton.disabled || !addButton.dataset.id) {
       alert('אנא בחר משתמש להוספה');
       return;
     }
-  
+
     const userId = addButton.dataset.id;
     const userEmail = addButton.dataset.email;
     const userName = addButton.dataset.name;
-  
+
     showLoader();
-  
+
     // בדיקה אם המשתמש כבר קיים בפרויקט
     if (currentProjectMembers.some(member => member.userId === userId)) {
       hideLoader();
       alert('משתמש זה כבר קיים בפרויקט');
       return;
     }
-  
+
     // הוספת המשתמש לרשימת החברים של הפרויקט
     db.collection('project_members').add({
       projectId: currentProjectId,
@@ -4294,12 +4148,12 @@ function displayProjects(projects) {
     .then(() => {
       hideLoader();
       document.getElementById('team-member-modal').style.display = 'none';
-  
+
       // רישום פעילות
       logActivity('הוסיף חבר צוות', currentProjectId, `הוסיף את ${userName} לפרויקט`);
-  
+
       showNotification('חבר צוות נוסף', 'חבר הצוות נוסף בהצלחה לפרויקט', 'success');
-  
+
       loadProjectMembers(currentProjectId);
     })
     .catch(error => {
@@ -6064,46 +5918,9 @@ function quickUpdateTaskStatus(taskId, newStatus) {
        }
      }, 2000);
    });
-   // מאזין לאירוע שינוי בשדה החיפוש
-    document.getElementById('member-email').addEventListener('input', function() {
-      // רק אם יש לפחות 3 תווים, בצע חיפוש
-      if (this.value.trim().length >= 3) {
-        searchUserByEmailOrName();
-      } else {
-        document.getElementById('member-search-results').innerHTML = '<div>הזן לפחות 3 תווים לחיפוש</div>';
-        document.getElementById('add-member-confirm-btn').disabled = true;
-      }
-    });
-    
-    // מאזין לאירוע שינוי בשדה החיפוש
-  document.getElementById('member-email').addEventListener('input', function() {
-    // רק אם יש לפחות 3 תווים, בצע חיפוש
-    if (this.value.trim().length >= 3) {
-      searchUserByEmailOrName();
-    } else {
-      document.getElementById('member-search-results').innerHTML = '<div>הזן לפחות 3 תווים לחיפוש</div>';
-      document.getElementById('add-member-confirm-btn').disabled = true;
-    }
-  });
-  
-  // אירוע לחיצה על כפתור הוספת חבר
-  document.getElementById('add-member-confirm-btn').addEventListener('click', addMemberToProject);
-  
-  // אירוע לחיצה על כפתור ביטול
-  document.getElementById('cancel-member-btn').addEventListener('click', function() {
-    document.getElementById('team-member-modal').style.display = 'none';
-  });
-  
-  // סגירת המודל בלחיצה מחוץ לתוכן
-  window.addEventListener('click', function(e) {
-    const modal = document.getElementById('team-member-modal');
-    if (e.target === modal) {
-      modal.style.display = 'none';
-    }
-  });
-  
-  // הפעלת אתחול Firebase בטעינת הדף
-  document.addEventListener('DOMContentLoaded', initializeFirebase);
+
+   // הפעלת אתחול Firebase בטעינת הדף
+   document.addEventListener('DOMContentLoaded', initializeFirebase);
   </script>
 </body>
 </html>
