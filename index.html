@@ -4471,8 +4471,3097 @@
           });
       }
   
-      // כאן יש להוסיף את שאר הפונקציות מהקוד המקורי שקשורות לפרויקטים, משימות וכו'.
-      // (המשך הקוד של הפרויקט המקורי ללא שינויים)...
+      // פונקציה לייצוא משימות לקובץ CSV
+function exportTasks() {
+  if (!userDashboardTasks || userDashboardTasks.length === 0) {
+    showNotification('אין משימות לייצוא', 'לא נמצאו משימות לייצא', 'warning');
+    return;
+  }
+
+  // בניית CSV
+  let csvContent = 'שם משימה,פרויקט,תיאור,תאריך יעד,סטטוס,תגיות\n';
+
+  userDashboardTasks.forEach(task => {
+    const project = allProjects.find(p => p.id === task.data.projectId);
+    const projectName = project ? project.data.name : '';
+    // ניקוי שדות מפסיקים ושורות חדשות
+    const name = task.data.name ? task.data.name.replace(/,/g, ' ').replace(/\n/g, ' ') : '';
+    const description = task.data.description ? task.data.description.replace(/,/g, ' ').replace(/\n/g, ' ') : '';
+    const deadline = task.data.deadline || '';
+    const status = statusLabels[task.data.status] || '';
+    const tags = task.data.tags ? task.data.tags.join(';') : '';
+
+    csvContent += `"${name}","${projectName}","${description}","${deadline}","${status}","${tags}"\n`;
+  });
+
+  // יצירת קובץ להורדה
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `משימות_${new Date().toLocaleDateString('he-IL')}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showNotification('הייצוא הושלם', 'המשימות יוצאו בהצלחה לקובץ CSV', 'success');
+
+  // רישום פעילות
+  logActivity('ייצא משימות', currentUser.uid, `ייצא ${userDashboardTasks.length} משימות`);
+}
+// חדש - בדיקת תאריכי יעד
+function checkDeadlines() {
+  if (!currentUser) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const threeDay = new Date(today);
+  threeDay.setDate(threeDay.getDate() + 3);
+
+  // מצא משימות עם תאריך יעד קרוב
+  db.collection('tasks')
+    .where('assigneeId', '==', currentUser.uid)
+    .where('status', '!=', 'completed')
+    .get()
+    .then(snapshot => {
+      snapshot.forEach(doc => {
+        const task = doc.data();
+
+        if (task.deadline) {
+          const deadlineDate = new Date(task.deadline);
+          deadlineDate.setHours(0, 0, 0, 0);
+
+          if (deadlineDate.getTime() === tomorrow.getTime()) {
+            showNotification('תזכורת משימה', `המשימה "${task.name}" צריכה להסתיים מחר!`, 'warning');
+          } else if (deadlineDate.getTime() === today.getTime()) {
+            showNotification('תזכורת משימה', `המשימה "${task.name}" צריכה להסתיים היום!`, 'danger');
+          } else if (deadlineDate < today) {
+            showNotification('משימה באיחור', `המשימה "${task.name}" עברה את תאריך היעד!`, 'danger');
+          } else if (deadlineDate <= threeDay) {
+            showNotification('משימה מתקרבת', `נותרו פחות מ-3 ימים למשימה "${task.name}"`, 'info');
+          }
+        }
+      });
+    });
+}
+
+// חדש - פונקציה לטיפול בקבצים שהועלו
+function handleFiles(files) {
+  const filePreview = document.getElementById('file-preview');
+
+  Array.from(files).forEach(file => {
+    // בדיקת גודל הקובץ (מקסימום 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      showNotification('שגיאה', `הקובץ ${file.name} גדול מדי. מקסימום 10MB.`, 'danger');
+      return;
+    }
+
+    // הוספה למערך הקבצים
+    uploadedFiles.push(file);
+
+    // תצוגה מקדימה
+    const fileItem = document.createElement('div');
+    fileItem.className = 'file-item';
+
+    // קביעת אייקון לפי סוג הקובץ
+    let icon = 'fa-file';
+    if (file.type.startsWith('image/')) icon = 'fa-file-image';
+    else if (file.type.startsWith('video/')) icon = 'fa-file-video';
+    else if (file.type.startsWith('audio/')) icon = 'fa-file-audio';
+    else if (file.type.includes('pdf')) icon = 'fa-file-pdf';
+    else if (file.type.includes('word')) icon = 'fa-file-word';
+    else if (file.type.includes('excel') || file.type.includes('sheet')) icon = 'fa-file-excel';
+
+    fileItem.innerHTML = `
+      <i class="fas ${icon}" style="margin-left: 5px;"></i>
+      <span>${file.name}</span>
+      <i class="fas fa-times file-delete" data-name="${file.name}"></i>
+    `;
+
+    filePreview.appendChild(fileItem);
+  });
+
+  // הוספת אירוע מחיקה
+  document.querySelectorAll('.file-delete').forEach(deleteBtn => {
+    deleteBtn.addEventListener('click', function() {
+      const fileName = this.getAttribute('data-name');
+
+      // הסרה מהמערך
+      uploadedFiles = uploadedFiles.filter(file => file.name !== fileName);
+
+      // הסרה מהתצוגה
+      this.closest('.file-item').remove();
+    });
+  });
+}
+
+// חדש - העלאת קבצים ל-Firebase Storage
+async function uploadTaskFiles(taskId) {
+  if (!uploadedFiles.length) return [];
+
+  const filesMetadata = [];
+
+  for (const file of uploadedFiles) {
+    try {
+      // יצירת הפניה ייחודית בסטורג'
+      const fileRef = storage.ref(`tasks/${taskId}/${Date.now()}_${file.name}`);
+
+      // העלאת הקובץ
+      const snapshot = await fileRef.put(file);
+
+      // קבלת הURL של הקובץ
+      const downloadURL = await snapshot.ref.getDownloadURL();
+
+      filesMetadata.push({
+        name: file.name,
+        path: snapshot.ref.fullPath,
+        type: file.type,
+        size: file.size,
+        url: downloadURL,
+        uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (error) {
+      console.error(`Error uploading file ${file.name}:`, error);
+    }
+  }
+
+  // ניקוי מערך הקבצים המוחזקים זמנית
+  uploadedFiles = [];
+  document.getElementById('file-preview').innerHTML = '';
+
+  return filesMetadata;
+}
+
+// חדש - טעינת קבצים של משימה
+function loadTaskFiles(taskId) {
+  const filePreview = document.getElementById('file-preview');
+  filePreview.innerHTML = '';
+
+  db.collection('tasks').doc(taskId).get()
+    .then(doc => {
+      if (doc.exists) {
+        const task = doc.data();
+
+        if (task.files && task.files.length > 0) {
+          task.files.forEach(file => {
+            // קביעת אייקון לפי סוג הקובץ
+            let icon = 'fa-file';
+            if (file.type.startsWith('image/')) icon = 'fa-file-image';
+            else if (file.type.startsWith('video/')) icon = 'fa-file-video';
+            else if (file.type.startsWith('audio/')) icon = 'fa-file-audio';
+            else if (file.type.includes('pdf')) icon = 'fa-file-pdf';
+            else if (file.type.includes('word')) icon = 'fa-file-word';
+            else if (file.type.includes('excel') || file.type.includes('sheet')) icon = 'fa-file-excel';
+
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `
+              <a href="${file.url}" target="_blank" style="display:flex; align-items:center; text-decoration:none; color:inherit;">
+                <i class="fas ${icon}" style="margin-left: 5px;"></i>
+                <span>${file.name}</span>
+              </a>
+              <i class="fas fa-times file-delete" data-id="${taskId}" data-path="${file.path}"></i>
+            `;
+
+            filePreview.appendChild(fileItem);
+          });
+
+          // הוספת אירוע מחיקה
+          document.querySelectorAll('.file-delete').forEach(deleteBtn => {
+            deleteBtn.addEventListener('click', function() {
+              const taskId = this.getAttribute('data-id');
+              const filePath = this.getAttribute('data-path');
+
+              if (confirm('האם אתה בטוח שברצונך למחוק קובץ זה?')) {
+                deleteTaskFile(taskId, filePath, this.closest('.file-item'));
+              }
+            });
+          });
+        } else {
+          filePreview.innerHTML = '<div style="color:#888;">אין קבצים מצורפים</div>';
+        }
+      }
+    })
+    .catch(error => {
+      console.error("Error loading task files:", error);
+    });
+}
+
+// חדש - מחיקת קובץ של משימה
+function deleteTaskFile(taskId, filePath, fileElement) {
+  showLoader();
+
+  // מחיקת הקובץ מהסטורג'
+  storage.ref(filePath).delete()
+    .then(() => {
+      // עדכון המשימה בפיירסטור
+      return db.collection('tasks').doc(taskId).get()
+        .then(doc => {
+          if (doc.exists) {
+            const task = doc.data();
+            const updatedFiles = task.files.filter(file => file.path !== filePath);
+
+            return db.collection('tasks').doc(taskId).update({
+              files: updatedFiles
+            });
+          }
+        });
+    })
+    .then(() => {
+      // הסרת האלמנט מהתצוגה
+      if (fileElement) {
+        fileElement.remove();
+      }
+
+      hideLoader();
+      showNotification('הקובץ נמחק', 'הקובץ נמחק בהצלחה', 'success');
+
+      // אם אין קבצים נוספים, הוסף הודעה
+      const filePreview = document.getElementById('file-preview');
+      if (filePreview.children.length === 0) {
+        filePreview.innerHTML = '<div style="color:#888;">אין קבצים מצורפים</div>';
+      }
+
+      // רישום היסטוריית פעילות
+      logActivity(`מחק קובץ מהמשימה`, taskId);
+    })
+    .catch(error => {
+      hideLoader();
+      console.error("Error deleting file:", error);
+      showNotification('שגיאה', 'אירעה שגיאה במחיקת הקובץ', 'danger');
+    });
+}
+
+// חדש - פונקציות היסטוריית פעילות
+function logActivity(action, objectId, details = null) {
+  if (!currentUser) return Promise.resolve();
+
+  const activityData = {
+    action: action,
+    objectId: objectId,
+    userId: currentUser.uid,
+    displayName: currentUser.displayName || currentUser.email.split('@')[0],
+    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    details: details
+  };
+
+  return db.collection('activity_log').add(activityData)
+    .catch(error => {
+      console.error("Error logging activity:", error);
+      return null;
+    });
+}
+
+function loadActivityLog() {
+  const activityLog = document.getElementById('activity-log');
+  activityLog.innerHTML = '<li class="activity-item">טוען היסטוריה...</li>';
+
+  db.collection('activity_log')
+    .orderBy('timestamp', 'desc')
+    .limit(50)
+    .get()
+    .then(snapshot => {
+      if (snapshot.empty) {
+        activityLog.innerHTML = '<li class="activity-item">אין פעילות להצגה</li>';
+        return;
+      }
+
+      activityLog.innerHTML = '';
+
+      snapshot.forEach(doc => {
+        const activity = doc.data();
+        const date = activity.timestamp ? new Date(activity.timestamp.toDate()) : new Date();
+        const timeStr = date.toLocaleString('he-IL');
+
+        let actionIcon = '';
+        let iconClass = '';
+
+        // התאמת אייקון לפעולה
+        switch(activity.action) {
+          case 'יצר פרויקט':
+            actionIcon = 'fa-project-diagram';
+            iconClass = 'create';
+            break;
+          case 'ערך פרויקט':
+            actionIcon = 'fa-edit';
+            iconClass = 'edit';
+            break;
+          case 'מחק פרויקט':
+            actionIcon = 'fa-trash-alt';
+            iconClass = 'delete';
+            break;
+          case 'יצר משימה':
+            actionIcon = 'fa-tasks';
+            iconClass = 'create';
+            break;
+          case 'ערך משימה':
+            actionIcon = 'fa-edit';
+            iconClass = 'edit';
+            break;
+          case 'מחק משימה':
+            actionIcon = 'fa-trash-alt';
+            iconClass = 'delete';
+            break;
+          case 'הוסיף חבר צוות':
+            actionIcon = 'fa-user-plus';
+            iconClass = 'create';
+            break;
+          case 'הסיר חבר צוות':
+            actionIcon = 'fa-user-minus';
+            iconClass = 'delete';
+            break;
+          case 'העלה קובץ':
+            actionIcon = 'fa-file-upload';
+            iconClass = 'create';
+            break;
+          case 'מחק קובץ':
+            actionIcon = 'fa-file-excel';
+            iconClass = 'delete';
+            break;
+          case 'השלים משימה':
+            actionIcon = 'fa-check-circle';
+            iconClass = 'complete';
+            break;
+          default:
+            actionIcon = 'fa-history';
+            iconClass = 'edit';
+        }
+
+        const activityItem = document.createElement('li');
+        activityItem.className = 'activity-item';
+        activityItem.innerHTML = `
+          <div class="activity-icon ${iconClass}"><i class="fas ${actionIcon}"></i></div>
+          <div class="activity-content">
+            <div class="activity-header">
+              <span class="activity-title">${activity.displayName} ${activity.action}</span>
+              <span class="activity-time">${timeStr}</span>
+            </div>
+            ${activity.details ? `<div class="activity-details">${activity.details}</div>` : ''}
+          </div>
+        `;
+
+        activityLog.appendChild(activityItem);
+      });
+    })
+    .catch(error => {
+      console.error("Error loading activity log:", error);
+      activityLog.innerHTML = '<li class="activity-item">שגיאה בטעינת היסטוריה</li>';
+    });
+}
+
+// חדש - פונקציות סטטיסטיקות וגרפים
+function loadStats() {
+  showLoader();
+
+  // מחיקת גרפים קיימים
+  for (const chartId in charts) {
+    if (charts[chartId]) {
+      charts[chartId].destroy();
+    }
+  }
+
+  Promise.all([
+    loadProjectsProgressChart(),
+    loadTasksByStatusChart(),
+    loadWeeklyTasksChart(),
+    loadTasksByTagChart()
+  ])
+    .then(() => {
+      hideLoader();
+    })
+    .catch(error => {
+      console.error("Error loading statistics:", error);
+      hideLoader();
+      showNotification('שגיאה', 'אירעה שגיאה בטעינת הסטטיסטיקות', 'danger');
+    });
+}
+
+function loadProjectsProgressChart() {
+  return db.collection('projects')
+    .where('userId', '==', currentUser.uid)
+    .get()
+    .then(projectsSnapshot => {
+      const projectIds = projectsSnapshot.docs.map(doc => doc.id);
+
+      if (projectIds.length === 0) {
+        return [];
+      }
+
+      // קבלת משימות לכל פרויקט
+      const projectPromises = projectIds.map(projectId => {
+        return db.collection('tasks')
+          .where('projectId', '==', projectId)
+          .get()
+          .then(tasksSnapshot => {
+            const totalTasks = tasksSnapshot.size;
+            const completedTasks = tasksSnapshot.docs.filter(doc => doc.data().status === 'completed').length;
+            const project = projectsSnapshot.docs.find(doc => doc.id === projectId).data();
+
+            return {
+              name: project.name,
+              progress: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+              totalTasks
+            };
+          });
+      });
+
+      return Promise.all(projectPromises);
+    })
+    .then(projectProgress => {
+      // מיון פרויקטים לפי כמות משימות (הגדולים ביותר קודם)
+      projectProgress.sort((a, b) => b.totalTasks - a.totalTasks);
+
+      // הגבלה ל-10 הפרויקטים הגדולים
+      const topProjects = projectProgress.slice(0, 10);
+
+      const ctx = document.getElementById('projects-progress-chart').getContext('2d');
+
+      charts.projectsProgress = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: topProjects.map(p => p.name),
+          datasets: [{
+            label: 'התקדמות באחוזים',
+            data: topProjects.map(p => p.progress),
+            backgroundColor: topProjects.map(p => {
+              // צבע לפי אחוז התקדמות
+              if (p.progress >= 75) return 'rgba(46, 196, 182, 0.7)';
+              if (p.progress >= 50) return 'rgba(72, 149, 239, 0.7)';
+              if (p.progress >= 25) return 'rgba(249, 199, 79, 0.7)';
+              return 'rgba(239, 71, 111, 0.7)';
+            }),
+            borderColor: 'rgba(0, 0, 0, 0.1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: 'אחוז התקדמות'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'שם פרויקט'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            }
+          }
+        }
+      });
+    });
+}
+
+function loadTasksByStatusChart() {
+  return Promise.all([
+    // משימות שהמשתמש אחראי עליהן
+    db.collection('tasks')
+      .where('assigneeId', '==', currentUser.uid)
+      .get(),
+
+    // משימות בפרויקטים אישיים
+    db.collection('projects')
+      .where('userId', '==', currentUser.uid)
+      .where('type', '==', 'personal')
+      .get()
+      .then(projectsSnapshot => {
+        const projectIds = projectsSnapshot.docs.map(doc => doc.id);
+        if (projectIds.length === 0) return { docs: [] };
+
+        return db.collection('tasks')
+          .where('projectId', 'in', projectIds)
+          .get();
+      })
+  ])
+    .then(([assignedTasks, personalTasks]) => {
+      // איחוד המשימות למערך אחד
+      const allTasks = [...assignedTasks.docs, ...personalTasks.docs];
+
+      // ספירת משימות לפי סטטוס
+      const statusCounts = {
+        'not-started': 0,
+        'in-progress': 0,
+        'waiting': 0,
+        'blocked': 0,
+        'completed': 0
+      };
+
+      allTasks.forEach(doc => {
+        const status = doc.data().status || 'not-started';
+        if (statusCounts[status] !== undefined) {
+          statusCounts[status]++;
+        }
+      });
+
+      const ctx = document.getElementById('tasks-by-status-chart').getContext('2d');
+
+      charts.tasksByStatus = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: [
+            'טרם התחילה',
+            'בתהליך',
+            'ממתינה',
+            'תקועה',
+            'הושלמה'
+          ],
+          datasets: [{
+            data: [
+              statusCounts['not-started'],
+              statusCounts['in-progress'],
+              statusCounts['waiting'],
+              statusCounts['blocked'],
+              statusCounts['completed']
+            ],
+            backgroundColor: [
+              '#e9ecef',  // טרם התחילה
+              '#4895ef',  // בתהליך
+              '#f9c74f',  // ממתינה
+              '#ef476f',  // תקועה
+              '#2ec4b6'   // הושלמה
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+            }
+          }
+        }
+      });
+    });
+}
+
+function loadWeeklyTasksChart() {
+  // יצירת תאריכים לשבוע
+  const dates = [];
+  const today = new Date();
+
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(today.getDate() - i);
+    dates.push(date);
+  }
+
+  return Promise.all([
+    // משימות שהמשתמש אחראי עליהן
+    db.collection('tasks')
+      .where('assigneeId', '==', currentUser.uid)
+      .get(),
+
+    // משימות בפרויקטים אישיים
+    db.collection('projects')
+      .where('userId', '==', currentUser.uid)
+      .where('type', '==', 'personal')
+      .get()
+      .then(projectsSnapshot => {
+        const projectIds = projectsSnapshot.docs.map(doc => doc.id);
+        if (projectIds.length === 0) return { docs: [] };
+
+        return db.collection('tasks')
+          .where('projectId', 'in', projectIds)
+          .get();
+      })
+  ])
+    .then(([assignedTasks, personalTasks]) => {
+      // איחוד המשימות למערך אחד
+      const allTasks = [...assignedTasks.docs, ...personalTasks.docs].map(doc => {
+        const data = doc.data();
+        return {
+          deadline: data.deadline,
+          status: data.status
+        };
+      });
+
+      // ארגון משימות לפי תאריך
+      const tasksByDate = dates.map(date => {
+        const dateStr = date.toISOString().split('T')[0];
+
+        return {
+          date: dateStr,
+          label: new Intl.DateTimeFormat('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric' }).format(date),
+          count: allTasks.filter(task => task.deadline === dateStr).length,
+          completed: allTasks.filter(task => task.deadline === dateStr && task.status === 'completed').length
+        };
+      });
+
+      const ctx = document.getElementById('weekly-tasks-chart').getContext('2d');
+
+      charts.weeklyTasks = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: tasksByDate.map(d => d.label),
+          datasets: [
+            {
+              label: 'סך משימות',
+              data: tasksByDate.map(d => d.count),
+              backgroundColor: 'rgba(67, 97, 238, 0.7)',
+              borderColor: 'rgba(67, 97, 238, 1)',
+              borderWidth: 1
+            },
+            {
+              label: 'משימות שהושלמו',
+              data: tasksByDate.map(d => d.completed),
+              backgroundColor: 'rgba(46, 196, 182, 0.7)',
+              borderColor: 'rgba(46, 196, 182, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'מספר משימות'
+              },
+              ticks: {
+                precision: 0
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'תאריך'
+              }
+            }
+          }
+        }
+      });
+    });
+}
+
+function loadTasksByTagChart() {
+  return Promise.all([
+    // משימות שהמשתמש אחראי עליהן
+    db.collection('tasks')
+      .where('assigneeId', '==', currentUser.uid)
+      .get(),
+
+    // משימות בפרויקטים אישיים
+    db.collection('projects')
+      .where('userId', '==', currentUser.uid)
+      .where('type', '==', 'personal')
+      .get()
+      .then(projectsSnapshot => {
+        const projectIds = projectsSnapshot.docs.map(doc => doc.id);
+        if (projectIds.length === 0) return { docs: [] };
+
+        return db.collection('tasks')
+          .where('projectId', 'in', projectIds)
+          .get();
+      })
+  ])
+    .then(([assignedTasks, personalTasks]) => {
+      // איחוד המשימות למערך אחד
+      const allTasks = [...assignedTasks.docs, ...personalTasks.docs];
+
+      // ספירת משימות לפי תגית
+      const tagCounts = {};
+
+      allTasks.forEach(doc => {
+        const tags = doc.data().tags || [];
+        tags.forEach(tag => {
+          if (!tagCounts[tag]) {
+            tagCounts[tag] = 0;
+          }
+          tagCounts[tag]++;
+        });
+      });
+
+      // מיון התגיות לפי שכיחות (הנפוצות ביותר קודם)
+      const sortedTags = Object.entries(tagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10); // Top 10 tags
+
+      const ctx = document.getElementById('tasks-by-tag-chart').getContext('2d');
+
+      // יצירת צבעים אקראיים לתגיות
+      const colors = [
+        'rgba(67, 97, 238, 0.7)',   // כחול
+        'rgba(46, 196, 182, 0.7)',  // טורקיז
+        'rgba(249, 199, 79, 0.7)',  // צהוב
+        'rgba(239, 71, 111, 0.7)',  // אדום
+        'rgba(155, 89, 182, 0.7)',  // סגול
+        'rgba(52, 152, 219, 0.7)',  // כחול בהיר
+        'rgba(46, 204, 113, 0.7)',  // ירוק
+        'rgba(230, 126, 34, 0.7)',  // כתום
+        'rgba(52, 73, 94, 0.7)',    // אפור כהה
+        'rgba(149, 165, 166, 0.7)'  // אפור בהיר
+      ];
+
+      charts.tasksByTag = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: sortedTags.map(tag => tag[0]),
+          datasets: [{
+            data: sortedTags.map(tag => tag[1]),
+            backgroundColor: colors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'right',
+            }
+          }
+        }
+      });
+    });
+}
+
+// פונקציות לניהול פרויקטים
+function loadProjects() {
+  showLoader();
+  const projectsList = document.getElementById('projects-list');
+  projectsList.innerHTML = '<div>טוען פרויקטים...</div>';
+
+  // תחילה טען רק פרויקטים שהמשתמש הוא הבעלים שלהם
+  db.collection('projects')
+    .where('userId', '==', currentUser.uid)
+    .get()
+    .then(snapshot => {
+      let allProjectsList = [];
+
+      snapshot.forEach(doc => {
+        const project = doc.data();
+        allProjectsList.push({
+          id: doc.id,
+          data: project,
+          role: 'owner',
+          type: project.type || 'personal'
+        });
+      });
+
+      // שמירת הפרויקטים במשתנה גלובלי
+      allProjects = allProjectsList;
+
+      // סינון לפי הסוג שנבחר אם צריך
+      if (currentFilter !== "all") {
+        allProjectsList = allProjectsList.filter(p => p.data.type === currentFilter);
+      }
+
+      // סינון לפי חיפוש אם קיים
+      const searchTerm = document.getElementById('search-projects').value.trim().toLowerCase();
+      if (searchTerm) {
+        allProjectsList = filterProjectsBySearchTerm(allProjectsList, searchTerm);
+      }
+
+      // הצגת הפרויקטים
+      displayProjects(allProjectsList);
+      hideLoader();
+
+      // רק אחרי שהצגת את הפרויקטים של המשתמש, נסה לטעון גם פרויקטים שהוא חבר בהם
+      if (currentFilter === "all" || currentFilter === "team") {
+        loadTeamProjects();
+      }
+    })
+    .catch(error => {
+      console.error("Error loading projects:", error);
+      projectsList.innerHTML = '<div>שגיאה בטעינת פרויקטים. נסה שוב מאוחר יותר.</div>';
+      hideLoader();
+    });
+}
+
+// פונקציה לסינון פרויקטים לפי מונח חיפוש
+function filterProjectsBySearchTerm(projects, searchTerm) {
+  return projects.filter(project => {
+    const nameMatch = project.data.name && project.data.name.toLowerCase().includes(searchTerm);
+    const descMatch = project.data.description && project.data.description.toLowerCase().includes(searchTerm);
+    return nameMatch || descMatch;
+  });
+}
+
+// פונקציה לסינון פרויקטים לפי מונח חיפוש (לשימוש מחוץ ללולאת הטעינה)
+function filterProjects(searchTerm) {
+  let filteredProjects = [...allProjects];
+
+  // סינון לפי סוג אם נבחר
+  if (currentFilter !== "all") {
+    filteredProjects = filteredProjects.filter(p => p.data.type === currentFilter);
+  }
+
+  // סינון לפי מונח חיפוש
+  if (searchTerm) {
+  filteredProjects = filterProjectsBySearchTerm(filteredProjects, searchTerm);
+  }
+
+  displayProjects(filteredProjects);
+}
+
+// פונקציה נפרדת לטעינת פרויקטים צוותיים שהמשתמש חבר בהם
+function loadTeamProjects() {
+  db.collection('project_members')
+    .where('userId', '==', currentUser.uid)
+    .get()
+    .then(memberships => {
+      if (memberships.empty) return;
+
+      const projectIds = memberships.docs.map(doc => doc.data().projectId);
+
+      // שליפת פרויקטים אחד אחד במקום ב-batch
+      const promises = projectIds.map(projectId =>
+        db.collection('projects').doc(projectId).get()
+          .then(doc => {
+            if (doc.exists) {
+              const project = doc.data();
+              // בדיקה שהפרויקט לא כבר ברשימה
+              if (!allProjects.some(p => p.id === doc.id)) {
+                allProjects.push({
+                  id: doc.id,
+                  data: project,
+                  role: 'member',
+                  type: project.type
+                });
+              }
+            }
+            return null;
+          })
+          .catch(error => {
+            console.error("Error loading team project:", error);
+            return null;
+          })
+      );
+
+      Promise.all(promises)
+        .then(() => {
+          // סינון לפי הסוג שנבחר אם צריך
+          let projectsToDisplay = allProjects;
+          if (currentFilter !== "all") {
+            projectsToDisplay = allProjects.filter(p => p.data.type === currentFilter);
+          }
+
+          // סינון לפי חיפוש אם קיים
+          const searchTerm = document.getElementById('search-projects').value.trim().toLowerCase();
+          if (searchTerm) {
+            projectsToDisplay = filterProjectsBySearchTerm(projectsToDisplay, searchTerm);
+          }
+
+          // הצגת הפרויקטים המעודכנים
+          displayProjects(projectsToDisplay);
+
+          // עדכון הבוחר פרויקטים בדשבורד
+          updateProjectsDropdown();
+        })
+        .catch(error => {
+          console.error("Error loading team projects:", error);
+        });
+    })
+    .catch(error => {
+      console.error("Error loading team memberships:", error);
+    });
+}
+
+function loadProjectMembers(projectId) {
+  console.log('Starting loadProjectMembers with id:', projectId);
+
+  const membersList = document.getElementById('team-members-list');
+  if (!membersList) {
+    console.error('Error: team-members-list element not found!');
+    return;
+  }
+
+  membersList.innerHTML = '<div>טוען חברי צוות...</div>';
+
+  db.collection('project_members')
+    .where('projectId', '==', projectId)
+    .get()
+    .then(snapshot => {
+      console.log('Members data received, count:', snapshot.size);
+
+      if (snapshot.empty && (!currentProjectData || currentProjectData.userId !== currentUser.uid)) {
+        membersList.innerHTML = '<div>אין חברי צוות נוספים בפרויקט.</div>';
+        currentProjectMembers = [];
+        return;
+      }
+
+      membersList.innerHTML = '';
+      currentProjectMembers = [];
+
+      // הוספת בעל הפרויקט
+      if (currentProjectData) {
+        console.log('Adding project owner to members list');
+        currentProjectMembers.push({
+          userId: currentProjectData.userId,
+          email: currentProjectData.ownerEmail || currentUser.email,
+          displayName: currentProjectData.ownerName || currentUser.displayName || currentUser.email.split('@')[0],
+          role: 'owner'
+        });
+
+        const ownerItem = document.createElement('div');
+        ownerItem.className = 'member-card';
+        ownerItem.innerHTML = `
+          <div class="member-avatar">${(currentProjectData.ownerName || currentUser.displayName || currentUser.email).charAt(0).toUpperCase()}</div>
+          <div class="member-info">
+            <h4 class="member-name">${currentProjectData.ownerName || currentUser.displayName || currentUser.email.split('@')[0]}</h4>
+            <p class="member-email">${currentProjectData.ownerEmail || currentUser.email}</p>
+            <span class="badge badge-owner">מנהל פרויקט</span>
+          </div>
+        `;
+        membersList.appendChild(ownerItem);
+      }
+
+      // הוספת שאר חברי הצוות
+      console.log('Adding other team members');
+      snapshot.forEach(doc => {
+        const member = doc.data();
+        const memberId = doc.id;
+
+        currentProjectMembers.push({
+          userId: member.userId,
+          email: member.email,
+          displayName: member.displayName,
+          role: member.role
+        });
+
+        const memberItem = document.createElement('div');
+        memberItem.className = 'member-card';
+        memberItem.innerHTML = `
+          <div class="member-avatar">${member.displayName.charAt(0).toUpperCase()}</div>
+          <div class="member-info">
+            <h4 class="member-name">${member.displayName}</h4>
+            <p class="member-email">${member.email}</p>
+          </div>
+        `;
+
+        // אפשרות הסרת חבר צוות רק לבעל הפרויקט
+        if (currentProjectData && currentProjectData.userId === currentUser.uid) {
+          const memberActions = document.createElement('div');
+          memberActions.className = 'member-actions';
+          
+          const removeButton = document.createElement('button');
+          removeButton.className = 'btn btn-sm btn-danger';
+          removeButton.innerHTML = '<i class="fas fa-user-minus"></i>';
+          removeButton.addEventListener('click', function() {
+            if (confirm(`האם להסיר את ${member.displayName} מהפרויקט?`)) {
+              removeTeamMember(memberId, member.displayName);
+            }
+          });
+          
+          memberActions.appendChild(removeButton);
+          memberItem.appendChild(memberActions);
+        }
+
+        membersList.appendChild(memberItem);
+      });
+
+      // עדכון דרופדאון אחראים למשימות
+      updateAssigneeDropdown();
+
+      console.log('Finished loading members');
+    })
+    .catch(error => {
+      console.error("Error loading team members:", error);
+      membersList.innerHTML = '<div>שגיאה בטעינת חברי צוות.</div>';
+    });
+}
+
+// עדכון רשימת האחראים למשימות בדרופדאון
+function updateAssigneeDropdown() {
+  const assigneeFilter = document.getElementById('task-filter-assignee');
+  if (!assigneeFilter) return;
+
+  assigneeFilter.innerHTML = '<option value="all">כל האחראים</option>';
+  assigneeFilter.innerHTML += '<option value="none">ללא אחראי</option>';
+
+  // הוספת כל חברי הצוות לרשימה
+  currentProjectMembers.forEach(member => {
+    const option = document.createElement('option');
+    option.value = member.userId;
+    option.textContent = member.displayName;
+    assigneeFilter.appendChild(option);
+  });
+
+  // הצגת הדרופדאון רק בפרויקטים צוותיים
+  if (currentProjectData && currentProjectData.type === 'team') {
+    assigneeFilter.classList.remove('hidden');
+  } else {
+    assigneeFilter.classList.add('hidden');
+  }
+
+  // עדכון גם בתיבת הבחירה של עריכת משימה
+  const taskAssignee = document.getElementById('task-assignee');
+  if (taskAssignee) {
+    taskAssignee.innerHTML = '<option value="">לא משויך</option>';
+
+    currentProjectMembers.forEach(member => {
+      const option = document.createElement('option');
+      option.value = member.userId;
+      option.textContent = member.displayName;
+      taskAssignee.appendChild(option);
+    });
+  }
+}
+
+function removeTeamMember(membershipId, memberName) {
+  showLoader();
+
+  db.collection('project_members').doc(membershipId).delete()
+    .then(() => {
+      hideLoader();
+
+      // רישום פעילות
+      logActivity('הסיר חבר צוות', currentProjectId, `הסיר את ${memberName} מהפרויקט`);
+
+      showNotification('חבר צוות הוסר', 'חבר הצוות הוסר בהצלחה מהפרויקט', 'success');
+
+      loadProjectMembers(currentProjectId);
+    })
+    .catch(error => {
+      hideLoader();
+      console.error("Error removing team member:", error);
+      showNotification('שגיאה', 'שגיאה בהסרת חבר צוות: ' + error.message, 'danger');
+    });
+}
+
+function openProject(projectId, userRole, taskIdToShow = null) {
+  console.log('Starting openProject with id:', projectId);
+  showLoader();
+
+  currentProjectId = projectId;
+
+  try {
+    // שינוי תצוגה - השתמש בקלאסים במקום בסגנון ישיר
+    console.log('Changing view');
+    document.querySelectorAll('.dashboard-tab').forEach(t => t.classList.remove('active'));
+    
+    document.querySelectorAll('#projects-view, #dashboard-view, #stats-view, #activity-view, #profile-view, #settings-view').forEach(view => {
+      view.classList.add('hidden');
+    });
+    
+    document.getElementById('project-detail-view').classList.remove('hidden');
+
+    // טעינת פרטי הפרויקט
+    console.log('Loading project details');
+    db.collection('projects').doc(projectId).get()
+      .then(doc => {
+        console.log('Received doc:', doc.exists);
+        if (!doc.exists) {
+          hideLoader();
+          showNotification('שגיאה', 'הפרויקט לא נמצא', 'danger');
+          return;
+        }
+
+        const project = doc.data();
+        console.log('Project data received:', project);
+        currentProjectData = project;
+
+        // הצגת תאריך בפורמט מקומי
+        let deadlineText = 'אין תאריך יעד';
+        let deadlineClass = '';
+
+        if (project.deadline) {
+          const date = new Date(project.deadline);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          deadlineText = date.toLocaleDateString('he-IL');
+
+          if (date < today) {
+            deadlineClass = 'text-danger';
+          }
+        }
+
+        console.log('Updating project detail HTML');
+        // עדכון כותרת וכו'
+        document.getElementById('project-detail-title').textContent = project.name;
+        document.getElementById('project-detail-description').textContent = project.description || 'אין תיאור';
+        document.getElementById('project-detail-type').textContent = project.type === 'personal' ? 'פרויקט אישי' : 'פרויקט צוותי';
+        document.getElementById('project-detail-deadline').textContent = deadlineText;
+        document.getElementById('project-detail-deadline').className = deadlineClass;
+
+        console.log('Project detail HTML updated');
+
+        // הוספת כפתור עריכה רק למי שיצר את הפרויקט
+        if (project.userId === currentUser.uid) {
+          console.log('Adding edit button for project owner');
+          // זה יתווסף בתצוגה החדשה על-ידי עדכון ה-HTML המתאים
+        }
+
+        console.log('Setting up team members section');
+        // הצגת חברי צוות רק בפרויקטים צוותיים
+        const teamMembersSection = document.getElementById('team-members-section');
+        if (teamMembersSection) {
+          // שימוש בקלאסים במקום style ישיר
+          if (project.type === 'team') {
+            teamMembersSection.classList.remove('hidden');
+          } else {
+            teamMembersSection.classList.add('hidden');
+          }
+        } else {
+          console.error('Error: team-members-section element not found!');
+        }
+
+        // הגדרת התצוגה של הטאבים לפי סוג פרויקט
+        const taskViewTabs = document.getElementById('task-view-tabs');
+        if (project.type === 'team') {
+          taskViewTabs.classList.remove('hidden');
+        } else {
+          taskViewTabs.classList.add('hidden');
+          // בפרויקט אישי תמיד להציג את תצוגת הרשימה
+          document.getElementById('tasks-list-view').classList.remove('hidden');
+          document.getElementById('tasks-by-assignee-view').classList.add('hidden');
+          currentTaskView = "list";
+        }
+
+        if (project.type === 'team') {
+          console.log('Loading project members');
+          loadProjectMembers(projectId);
+
+          // הצגת כפתור הוספת חברים רק לבעל הפרויקט
+          const addMemberBtn = document.getElementById('add-member-btn');
+          if (addMemberBtn) {
+            // לוודא שהכפתור נראה אם המשתמש הוא בעל הפרויקט
+            if (project.userId === currentUser.uid) {
+              addMemberBtn.style.display = 'block';
+              console.log('Add member button shown (project owner)');
+            } else {
+              addMemberBtn.style.display = 'none';
+              console.log('Add member button hidden (not project owner)');
+            }
+          } else {
+            console.error('Error: add-member-btn element not found!');
+          }
+        }
+
+        console.log('Updating task tags dropdown');
+        // עדכון הסינון לפי תגיות
+        updateProjectTaskTagsDropdown(projectId);
+
+        console.log('Loading tasks');
+        // טעינת המשימות של הפרויקט
+        loadTasks(projectId, taskIdToShow);
+
+        // טעינת גרף התקדמות הפרויקט
+        loadProjectProgressChart(projectId);
+
+        console.log('Project loaded successfully');
+      })
+      .catch(function(error) {
+        console.error('Error in openProject:', error);
+        console.error('Error details:', error.message, error.stack);
+        hideLoader();
+
+        // במקרה של שגיאה, חזרה למצב הקודם
+        document.getElementById('projects-view').classList.remove('hidden');
+        document.getElementById('project-detail-view').classList.add('hidden');
+
+        showNotification('שגיאה', 'שגיאה בטעינת פרטי הפרויקט: ' + (error.message || 'בעיה לא ידועה'), 'danger');
+      });
+  } catch (e) {
+    // תפיסת שגיאות שעלולות להתרחש לפני הבטחה
+    console.error('Unexpected error in openProject function:', e);
+    hideLoader();
+
+    // חזרה למצב הקודם
+    document.getElementById('projects-view').classList.remove('hidden');
+    document.getElementById('project-detail-view').classList.add('hidden');
+
+    showNotification('שגיאה', 'שגיאה בפתיחת הפרויקט: ' + (e.message || 'בעיה לא ידועה'), 'danger');
+  }
+}
+
+function updateProjectTaskTagsDropdown(projectId) {
+  // טעינת תגיות המשימות של הפרויקט הנוכחי
+  db.collection('tasks')
+    .where('projectId', '==', projectId)
+    .get()
+    .then(snapshot => {
+      const tags = new Set();
+
+      snapshot.forEach(doc => {
+        const task = doc.data();
+        if (task.tags && task.tags.length > 0) {
+          task.tags.forEach(tag => tags.add(tag));
+        }
+      });
+
+      // עדכון הדרופדאון
+      const tagSelect = document.getElementById('task-filter-tag');
+      tagSelect.innerHTML = '<option value="all">כל התגיות</option>';
+
+      tags.forEach(tag => {
+        const option = document.createElement('option');
+        option.value = tag;
+        option.textContent = tag;
+        tagSelect.appendChild(option);
+      });
+    })
+    .catch(error => {
+      console.error("Error loading project tags:", error);
+    });
+}
+
+function showAddProjectModal() {
+  document.getElementById('project-modal-title').textContent = 'פרויקט חדש';
+  document.getElementById('project-name').value = '';
+  document.getElementById('project-description').value = '';
+  document.getElementById('project-deadline').value = '';
+  document.getElementById('project-type').value = 'personal';
+  document.getElementById('project-type').disabled = false;
+  document.getElementById('project-id').value = '';
+
+  document.getElementById('project-modal').style.display = 'block';
+}
+
+function showEditProjectModal(projectId, project) {
+  document.getElementById('project-modal-title').textContent = 'עריכת פרויקט';
+  document.getElementById('project-name').value = project.name || '';
+  document.getElementById('project-description').value = project.description || '';
+  document.getElementById('project-deadline').value = project.deadline || '';
+  document.getElementById('project-type').value = project.type || 'personal';
+  document.getElementById('project-id').value = projectId;
+
+  // בעריכת פרויקט קיים לא ניתן לשנות את סוג הפרויקט
+  document.getElementById('project-type').disabled = true;
+
+  document.getElementById('project-modal').style.display = 'block';
+}
+
+function saveProject() {
+  const name = document.getElementById('project-name').value.trim();
+  const description = document.getElementById('project-description').value.trim();
+  const deadline = document.getElementById('project-deadline').value;
+  const type = document.getElementById('project-type').value;
+  const projectId = document.getElementById('project-id').value;
+
+  if (!name) {
+   showNotification('שדה חובה', 'אנא הזן שם לפרויקט', 'warning');
+   return;
+  }
+
+  showLoader();
+
+  const projectData = {
+    name,
+    description,
+    deadline,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  let savePromise;
+  let actionType;
+
+  if (projectId) {
+    // עדכון פרויקט קיים - אין לשנות את הסוג
+    savePromise = db.collection('projects').doc(projectId).update(projectData);
+    actionType = 'ערך פרויקט';
+  } else {
+    // יצירת פרויקט חדש
+    projectData.userId = currentUser.uid;
+    projectData.type = type;
+    projectData.ownerEmail = currentUser.email;
+    projectData.ownerName = currentUser.displayName || currentUser.email.split('@')[0];
+    projectData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    savePromise = db.collection('projects').add(projectData);
+    actionType = 'יצר פרויקט';
+  }
+
+  savePromise
+    .then((result) => {
+      hideLoader();
+      document.getElementById('project-modal').style.display = 'none';
+      document.getElementById('project-type').disabled = false; // החזרת הבחירה למצב פעיל
+
+      // רישום פעילות
+      const idToLog = projectId || (result ? result.id : null);
+      if (idToLog) {
+        logActivity(actionType, idToLog, `${actionType} "${name}"`);
+      }
+
+      showNotification('הפרויקט נשמר', 'הפרויקט נשמר בהצלחה', 'success');
+
+      if (projectId) {
+        // אם זו עריכת פרויקט קיים
+        openProject(projectId);
+      } else {
+        // אם זה פרויקט חדש
+        loadProjects();
+      }
+    })
+    .catch(error => {
+      hideLoader();
+      console.error("Error saving project:", error);
+      showNotification('שגיאה', 'שגיאה בשמירת פרויקט: ' + error.message, 'danger');
+      document.getElementById('project-type').disabled = false;
+    });
+}
+
+function deleteProject(projectId) {
+  if (!confirm('האם אתה בטוח שברצונך למחוק פרויקט זה? כל המשימות וחברי הצוות יימחקו.')) {
+    return;
+  }
+
+  showLoader();
+
+  // ראשית מחיקת כל המשימות השייכות לפרויקט
+  db.collection('tasks')
+    .where('projectId', '==', projectId)
+    .get()
+    .then(snapshot => {
+      const batch = db.batch();
+
+      snapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      return batch.commit();
+    })
+    .then(() => {
+      // מחיקת חברי הצוות מהפרויקט (אם יש)
+      return db.collection('project_members')
+        .where('projectId', '==', projectId)
+        .get();
+    })
+    .then(snapshot => {
+      const batch = db.batch();
+
+      snapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      return batch.commit();
+    })
+    .then(() => {
+      // מחיקת הפרויקט עצמו
+      return db.collection('projects').doc(projectId).delete();
+    })
+    .then(() => {
+      hideLoader();
+      // רישום פעילות
+      logActivity('מחק פרויקט', projectId);
+
+      showNotification('הפרויקט נמחק', 'הפרויקט ותכולתו נמחקו בהצלחה', 'success');
+
+      // בדיקה אם הפרויקט הנוכחי נמחק
+      if (currentProjectId === projectId) {
+        document.getElementById('projects-view').classList.remove('hidden');
+        document.getElementById('project-detail-view').classList.add('hidden');
+        document.querySelectorAll('.dashboard-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('nav-dashboard-projects').classList.add('active');
+        currentProjectId = null;
+      }
+
+      // רענון רשימת הפרויקטים
+      loadProjects();
+    })
+    .catch(error => {
+      hideLoader();
+      console.error("Error deleting project:", error);
+      showNotification('שגיאה', 'שגיאה במחיקת פרויקט: ' + error.message, 'danger');
+    });
+}
+
+// פונקציות לניהול משימות
+function loadTasks(projectId, taskIdToShow = null) {
+  console.log('Starting loadTasks with id:', projectId);
+
+  const tasksList = document.getElementById('tasks-list');
+  if (!tasksList) {
+    console.error('Error: tasks-list element not found!');
+    hideLoader();
+    return;
+  }
+
+  tasksList.innerHTML = '<div>טוען משימות...</div>';
+
+  try {
+    // קבלת פרמטרים של סינון ומיון
+    const sortByElement = document.getElementById('task-sort-by');
+    const filterTagElement = document.getElementById('task-filter-tag');
+    const filterStatusElement = document.getElementById('task-filter-status');
+    const filterAssigneeElement = document.getElementById('task-filter-assignee');
+
+    if (!sortByElement || !filterTagElement || !filterStatusElement) {
+      console.error('Error: Sort or filter elements not found!');
+      hideLoader();
+      return;
+    }
+
+    const sortValue = sortByElement.value;
+    const [sortField, sortDirection] = sortValue.split('-');
+    const filterTag = filterTagElement.value;
+    const filterStatus = filterStatusElement.value;
+    const filterAssignee = filterAssigneeElement ? filterAssigneeElement.value : 'all';
+
+    console.log('Query parameters:', {sortField, sortDirection, filterTag, filterStatus, filterAssignee});
+
+    let query = db.collection('tasks')
+      .where('projectId', '==', projectId);
+
+    // הוספת מיון לשאילתא אם אפשר
+    if (sortField === 'createdAt') {
+      query = query.orderBy(sortField, sortDirection);
+    }
+
+    console.log('Fetching tasks from database');
+    query.get()
+      .then(snapshot => {
+        console.log('Tasks data received, count:', snapshot.size);
+
+        if (snapshot.empty) {
+          tasksList.innerHTML = `
+            <div style="text-align: center; padding: 30px;">
+              <div style="font-size: 48px; color: var(--gray); margin-bottom: 15px;">
+                <i class="fas fa-tasks"></i>
+              </div>
+              <h3>אין משימות בפרויקט זה</h3>
+              <p>לחץ על "הוסף משימה" להוספת משימה חדשה</p>
+            </div>
+          `;
+
+          // עדכון תצוגת המשימות לפי אחראי
+          if (currentTaskView === "assignee") {
+            document.getElementById('unassigned-tasks-list').innerHTML = '<div>אין משימות ללא אחראי.</div>';
+            document.getElementById('tasks-by-assignee').innerHTML = '';
+          }
+
+          hideLoader();
+          return;
+        }
+
+        // איסוף ועיבוד המשימות
+        let tasks = snapshot.docs.map(doc => {
+          return {
+            id: doc.id,
+            data: doc.data()
+          };
+        });
+
+        console.log('Processing and sorting tasks');
+
+        // סינון לפי תגית אם נבחר
+        if (filterTag !== 'all') {
+          tasks = tasks.filter(task => {
+            const tags = task.data.tags || [];
+            return tags.includes(filterTag);
+          });
+        }
+
+        // סינון לפי סטטוס אם נבחר
+        if (filterStatus !== 'all') {
+          tasks = tasks.filter(task => task.data.status === filterStatus);
+        }
+
+        // סינון לפי אחראי אם נבחר
+        if (filterAssignee !== 'all' && currentTaskView === 'list') {
+          if (filterAssignee === 'none') {
+            tasks = tasks.filter(task => !task.data.assigneeId);
+          } else {
+            tasks = tasks.filter(task => task.data.assigneeId === filterAssignee);
+          }
+        }
+
+        // מיון במידת הצורך (אם השדה אינו createdAt שכבר מתויג בשאילתא)
+        if (sortField !== 'createdAt') {
+          tasks.sort((a, b) => {
+            let valA = a.data[sortField] || '';
+            let valB = b.data[sortField] || '';
+
+            // מיון מיוחד לתאריכים
+            if (sortField === 'deadline') {
+              valA = valA ? new Date(valA) : new Date(9999, 11, 31);
+              valB = valB ? new Date(valB) : new Date(9999, 11, 31);
+            }
+
+            // מיון מיוחד לסטטוס
+            if (sortField === 'status') {
+              const statusOrder = {
+                'blocked': 0,
+                'waiting': 1,
+                'not-started': 2,
+                'in-progress': 3,
+                'completed': 4
+              };
+              valA = statusOrder[a.data.status || 'not-started'] || 999;
+              valB = statusOrder[b.data.status || 'not-started'] || 999;
+            }
+
+            if (sortDirection === 'asc') {
+              return valA > valB ? 1 : -1;
+            } else {
+              return valA < valB ? 1 : -1;
+            }
+          });
+        }
+
+        console.log('Rendering tasks to UI');
+
+        // שמירת המשימות במשתנה זמני לשימוש בתצוגות שונות
+        const allTasks = [...tasks];
+
+        // אם התצוגה היא לפי רשימה, הצג את המשימות ברשימה
+        if (currentTaskView === "list") {
+          // רנדור המשימות
+          tasksList.innerHTML = '';
+
+          tasks.forEach(task => {
+            try {
+              const taskElement = createTaskElement(task);
+              tasksList.appendChild(taskElement);
+            } catch (err) {
+              console.error('Error creating task element:', err, task);
+            }
+          });
+        } else if (currentTaskView === "assignee") {
+          // אם התצוגה היא לפי אחראי, הצג את המשימות לפי אחראי
+          displayTasksByAssignee(allTasks);
+        }
+
+        // אם יש משימה ספציפית להציג
+        if (taskIdToShow) {
+          console.log('Showing specific task:', taskIdToShow);
+          const taskToShow = tasks.find(t => t.id === taskIdToShow);
+          if (taskToShow) {
+            showEditTaskModal(taskIdToShow, taskToShow.data);
+          }
+        }
+
+        hideLoader();
+        console.log('Tasks loaded successfully');
+      })
+      .catch(error => {
+        console.error("Error loading tasks:", error);
+        hideLoader();
+        tasksList.innerHTML = '<div>שגיאה בטעינת משימות.</div>';
+        showNotification('שגיאה', 'שגיאה בטעינת משימות: ' + error.message, 'danger');
+      });
+  } catch (e) {
+    console.error('Unexpected error in loadTasks:', e);
+    hideLoader();
+    tasksList.innerHTML = '<div>שגיאה בלתי צפויה בטעינת משימות.</div>';
+    showNotification('שגיאה', 'שגיאה בלתי צפויה בטעינת משימות: ' + e.message, 'danger');
+  }
+}
+
+// פונקציה לתצוגת משימות לפי אחראי
+function displayTasksByAssignee(tasks = null) {
+  if (!tasks) {
+    // אם לא התקבלו משימות, טען מחדש
+    loadTasks(currentProjectId);
+    return;
+  }
+
+  const unassignedContainer = document.getElementById('unassigned-tasks-list');
+  const assigneeContainer = document.getElementById('tasks-by-assignee');
+
+  unassignedContainer.innerHTML = '';
+  assigneeContainer.innerHTML = '';
+
+  // בדיקת הפילטר של האחראי
+  const assigneeFilter = document.getElementById('task-filter-assignee').value;
+
+  // קבוצות משימות לפי אחראי
+  const tasksByAssignee = new Map();
+
+  // משימות ללא אחראי
+  const unassignedTasks = tasks.filter(task => !task.data.assigneeId);
+
+  // סינון לפי סטטוס אם נבחר
+  const statusFilter = document.getElementById('task-filter-status').value;
+
+  let filteredUnassigned = unassignedTasks;
+  if (statusFilter !== 'all') {
+    filteredUnassigned = unassignedTasks.filter(task => task.data.status === statusFilter);
+  }
+
+  // משימות עם אחראי
+  tasks.forEach(task => {
+    if (task.data.assigneeId) {
+      // סינון לפי סטטוס אם נבחר
+      if (statusFilter !== 'all' && task.data.status !== statusFilter) {
+        return;
+      }
+
+      // סינון לפי אחראי ספציפי אם נבחר
+      if (assigneeFilter !== 'all' && assigneeFilter !== 'none' && task.data.assigneeId !== assigneeFilter) {
+        return;
+      }
+
+      if (!tasksByAssignee.has(task.data.assigneeId)) {
+        tasksByAssignee.set(task.data.assigneeId, []);
+      }
+
+      tasksByAssignee.get(task.data.assigneeId).push(task);
+    }
+  });
+
+  // הצגת משימות ללא אחראי
+  if (assigneeFilter === 'all' || assigneeFilter === 'none') {
+    if (filteredUnassigned.length === 0) {
+      unassignedContainer.innerHTML = '<div>אין משימות ללא אחראי.</div>';
+    } else {
+      filteredUnassigned.forEach(task => {
+        unassignedContainer.appendChild(createTaskElement(task));
+      });
+    }
+  } else {
+    unassignedContainer.innerHTML = '<div>מוצגות רק משימות של האחראי שנבחר.</div>';
+  }
+
+  // הצגת משימות לפי אחראי
+  if (tasksByAssignee.size === 0 && (assigneeFilter === 'all' || assigneeFilter !== 'none')) {
+    assigneeContainer.innerHTML = '<div>אין משימות עם אחראים.</div>';
+  } else {
+    // יצירת קונטיינר לכל אחראי
+    tasksByAssignee.forEach((tasks, assigneeId) => {
+      // מציאת פרטי האחראי
+      let assigneeName = 'לא ידוע';
+      let assigneeInitial = '?';
+
+      const assignee = currentProjectMembers.find(member => member.userId === assigneeId);
+      if (assignee) {
+        assigneeName = assignee.displayName;
+        assigneeInitial = assigneeName.charAt(0).toUpperCase();
+      } else if (assigneeId === currentUser.uid) {
+        assigneeName = currentUser.displayName || currentUser.email.split('@')[0];
+        assigneeInitial = assigneeName.charAt(0).toUpperCase();
+      }
+
+      // יצירת קונטיינר לאחראי
+      const assigneeSection = document.createElement('div');
+      assigneeSection.className = 'card assignee-tasks-container';
+      assigneeSection.style.marginBottom = '20px';
+
+      // כותרת עם פרטי האחראי
+      const assigneeHeader = document.createElement('div');
+      assigneeHeader.className = 'member-card';
+      assigneeHeader.style.margin = '0';
+      assigneeHeader.style.borderRadius = '0';
+      assigneeHeader.innerHTML = `
+        <div class="member-avatar">${assigneeInitial}</div>
+        <div class="member-info">
+          <h4 class="member-name">${assigneeName}</h4>
+          <p class="member-email">${tasks.length} משימות</p>
+        </div>
+      `;
+      assigneeSection.appendChild(assigneeHeader);
+
+      // רשימת המשימות של האחראי
+      const tasksList = document.createElement('div');
+      tasksList.className = 'task-list';
+      tasksList.style.padding = '15px';
+
+      tasks.forEach(task => {
+        tasksList.appendChild(createTaskElement(task));
+      });
+
+      assigneeSection.appendChild(tasksList);
+      assigneeContainer.appendChild(assigneeSection);
+    });
+  }
+}
+
+function createTaskElement(task) {
+  const { id, data } = task;
+
+  // הצגת תאריך בפורמט מקומי
+  let deadlineText = 'אין תאריך יעד';
+  let isOverdue = false;
+
+  if (data.deadline) {
+    const date = new Date(data.deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    deadlineText = date.toLocaleDateString('he-IL');
+
+    if (date < today && data.status !== 'completed') {
+      isOverdue = true;
+    }
+  }
+
+  // יצירת אלמנט משימה
+  const taskItem = document.createElement('div');
+  taskItem.className = `task-card ${data.status === 'completed' ? 'completed' : ''} ${isOverdue ? 'overdue' : ''} ${data.isHelpRequest ? 'help-request' : ''}`;
+
+  // קבלת מידע על הסטטוס
+  const statusClass = `status-${data.status || 'not-started'}`;
+  const statusText = statusLabels[data.status || 'not-started'];
+
+  // מידע על האחראי למשימה
+  let assigneeInfo = '';
+  if (currentProjectData && currentProjectData.type === 'team' && data.assigneeId) {
+    const assignee = currentProjectMembers.find(m => m.userId === data.assigneeId);
+    if (assignee) {
+      assigneeInfo = `
+        <div style="display: flex; align-items: center; margin-right: 10px;">
+          <div class="user-avatar" style="width: 24px; height: 24px; font-size: 12px; margin-left: 5px;">
+            ${assignee.displayName.charAt(0).toUpperCase()}
+          </div>
+          <span>${assignee.displayName}</span>
+        </div>
+      `;
+    }
+  }
+
+  // יצירת תגיות
+  let tagsHtml = '';
+  if (data.tags && data.tags.length > 0) {
+    tagsHtml = '<div class="tags-container">';
+    data.tags.forEach(tag => {
+      const tagClass = getTagColorClass(tag);
+      tagsHtml += `<span class="tag ${tagClass}">${tag}</span>`;
+    });
+    tagsHtml += '</div>';
+  }
+
+  // מידע נוסף על סטטוס (סיבת עיכוב או ממתין ל...)
+  let statusExtraInfo = '';
+  if (data.status === 'blocked' && data.blockedReason) {
+    statusExtraInfo = `<div style="margin-top: 5px; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> סיבת העיכוב: ${data.blockedReason}</div>`;
+  } else if (data.status === 'waiting' && data.waitingFor) {
+    statusExtraInfo = `<div style="margin-top: 5px; color: var(--warning);"><i class="fas fa-hourglass-half"></i> ממתינה ל: ${data.waitingFor}</div>`;
+  }
+
+  // בדיקה האם יש קבצים
+  let filesInfo = '';
+  if (data.files && data.files.length > 0) {
+    filesInfo = `<div style="margin-top: 5px; color: var(--primary);"><i class="fas fa-paperclip"></i> ${data.files.length} קבצים מצורפים</div>`;
+  }
+
+  // יצירת התוכן ה-HTML
+  taskItem.innerHTML = `
+    <div class="task-card-header">
+      <h4 class="task-card-title">${data.name}</h4>
+      <div>
+        <span class="task-status ${statusClass}">${statusText}</span>
+        ${data.isHelpRequest ? '<span class="badge badge-warning"><i class="fas fa-hands-helping"></i></span>' : ''}
+      </div>
+    </div>
+    <div class="task-card-body">
+      <div>${data.description || 'אין תיאור'}</div>
+      ${statusExtraInfo}
+      ${filesInfo}
+      ${tagsHtml}
+    </div>
+    <div class="task-card-footer">
+      <div style="display: flex; align-items: center;">
+        <span ${isOverdue ? 'style="color: var(--danger);"' : ''}>
+          <i class="fas fa-calendar-alt"></i> ${deadlineText}
+        </span>
+        ${assigneeInfo}
+      </div>
+      <div class="task-actions">
+        <button class="btn btn-sm btn-icon chat-task" data-id="${id}" data-name="${data.name}" title="צ'אט">
+          <i class="fas fa-comments"></i>
+        </button>
+        <button class="btn btn-sm btn-icon edit-task" data-id="${id}" title="עריכה">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="btn btn-sm btn-icon btn-danger delete-task" data-id="${id}" title="מחיקה">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- כפתורי סטטוס מהיר -->
+    <div class="quick-status-buttons" style="display: flex; flex-wrap: wrap; gap: 5px; padding: 0 15px 15px 15px;">
+    </div>
+  `;
+
+  // הוספת כפתורי שינוי סטטוס מהיר
+  const quickStatusButtons = taskItem.querySelector('.quick-status-buttons');
+  if (quickStatusButtons) {
+    // מסדר הסטטוסים לפי הגיון העבודה
+    const statuses = [
+      { value: 'not-started', label: 'טרם התחילה', color: '#e9ecef', textColor: '#212529' },
+      { value: 'in-progress', label: 'בתהליך', color: '#4895ef', textColor: '#ffffff' },
+      { value: 'waiting', label: 'ממתינה', color: '#ffc107', textColor: '#212529' },
+      { value: 'blocked', label: 'תקועה', color: '#dc3545', textColor: '#ffffff' },
+      { value: 'completed', label: 'הושלמה', color: '#28a745', textColor: '#ffffff' }
+    ];
+
+    // הוספת כפתור לכל סטטוס, למעט הנוכחי
+    statuses.forEach(status => {
+      // לא מציגים כפתור לסטטוס הנוכחי
+      if (status.value === data.status) {
+        return;
+      }
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn btn-sm status-btn';
+      button.textContent = status.label;
+      button.style.backgroundColor = status.color;
+      button.style.color = status.textColor;
+      button.style.border = 'none';
+      button.style.fontSize = '12px';
+      button.style.padding = '3px 8px';
+      button.dataset.status = status.value;
+      button.dataset.taskId = id;
+
+      // הוספת הכפתור לדיב
+      quickStatusButtons.appendChild(button);
+    });
+  }
+
+  // הוספת אירועים
+  const chatButton = taskItem.querySelector('.chat-task');
+  if (chatButton) {
+    chatButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const taskId = this.getAttribute('data-id');
+      const taskName = this.getAttribute('data-name');
+      showTaskChat(taskId, taskName);
+    });
+  }
+
+  const editButton = taskItem.querySelector('.edit-task');
+  if (editButton) {
+    editButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      db.collection('tasks').doc(id).get()
+        .then(doc => {
+          if (doc.exists) {
+            showEditTaskModal(id, doc.data());
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching task:", error);
+        });
+    });
+  }
+
+  const deleteButton = taskItem.querySelector('.delete-task');
+  if (deleteButton) {
+    deleteButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (window.confirm("האם למחוק את המשימה?")) {
+        deleteTask(id);
+      }
+    });
+  }
+
+  // הוספת אירועי לחיצה לכפתורי הסטטוס המהיר
+  const statusButtons = taskItem.querySelectorAll('.status-btn');
+  statusButtons.forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.stopPropagation(); // למנוע פתיחת מודל עריכה
+      const newStatus = this.dataset.status;
+      const taskId = this.dataset.taskId;
+      const statusLabel = this.textContent;
+
+      if (confirm(`האם לשנות את סטטוס המשימה ל-${statusLabel}?`)) {
+        quickUpdateTaskStatus(taskId, newStatus);
+      }
+    });
+  });
+
+  return taskItem;
+}
+
+// פונקציה לקבלת מחלקת CSS עבור תגית
+function getTagColorClass(tag) {
+  // מתן צבע לתגית לפי השם
+  const tagLower = tag.toLowerCase();
+
+  if (tagLower.includes('דחוף') || tagLower.includes('חשוב')) {
+    return 'tag-red';
+  } else if (tagLower.includes('בינוני')) {
+    return 'tag-yellow';
+  } else if (tagLower.includes('נמוך')) {
+    return 'tag-green';
+  } else if (tagLower.includes('באג') || tagLower.includes('תקלה')) {
+    return 'tag-red';
+  } else if (tagLower.includes('פיתוח')) {
+    return 'tag-blue';
+  } else if (tagLower.includes('עיצוב')) {
+    return 'tag-purple';
+  } else if (tagLower.includes('תוכן')) {
+    return 'tag-cyan';
+  }
+
+  // אם אין התאמה ספציפית, להחזיר צבע לפי hash של השם
+  const hash = tag.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 6;
+
+  const colors = ['tag-blue', 'tag-green', 'tag-red', 'tag-yellow', 'tag-purple', 'tag-cyan'];
+  return colors[hash];
+}
+
+// פונקציה לעדכון מהיר של סטטוס משימה
+function quickUpdateTaskStatus(taskId, newStatus) {
+  showLoader();
+
+  // עדכון התאריך גם
+  const updates = {
+    status: newStatus,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  // הוספת שדות תלויי סטטוס
+  if (newStatus === 'completed') {
+    updates.completedAt = firebase.firestore.FieldValue.serverTimestamp();
+    updates.completedBy = currentUser.uid;
+  }
+
+  // אין לנו גישה ישירה למסמך המשימה, לכן ראשית נקרא אותו
+  db.collection('tasks').doc(taskId).get()
+    .then(doc => {
+      if (!doc.exists) {
+        throw new Error('משימה לא קיימת');
+      }
+
+      const taskData = doc.data();
+
+      // טיפול בשדות מיוחדים בהתאם לסטטוס החדש
+      if (newStatus !== 'blocked' && taskData.blockedReason) {
+        // מחיקת סיבת העיכוב אם הסטטוס אינו 'תקועה'
+        updates.blockedReason = firebase.firestore.FieldValue.delete();
+      }
+
+      if (newStatus !== 'waiting' && taskData.waitingFor) {
+        // מחיקת שדה "ממתין ל" אם הסטטוס אינו 'ממתינה'
+        updates.waitingFor = firebase.firestore.FieldValue.delete();
+      }
+
+      // עדכון המשימה
+      return db.collection('tasks').doc(taskId).update(updates);
+    })
+    .then(() => {
+      hideLoader();
+      showNotification('סטטוס עודכן', 'סטטוס המשימה עודכן בהצלחה', 'success');
+
+      // רישום פעילות
+      logActivity('עדכן סטטוס משימה', taskId, `שינה את סטטוס המשימה ל-${statusLabels[newStatus]}`);
+
+      // טעינה מחדש של המשימות
+      if (currentTaskView === "list") {
+        loadTasks(currentProjectId);
+      } else {
+        displayTasksByAssignee();
+      }
+
+      // רענון גרף התקדמות הפרויקט
+      loadProjectProgressChart(currentProjectId);
+    })
+    .catch(error => {
+      hideLoader();
+      console.error("Error updating task status:", error);
+      showNotification('שגיאה', 'שגיאה בעדכון סטטוס המשימה: ' + error.message, 'danger');
+    });
+}
+
+function showAddTaskModal(isHelpRequest = false) {
+  document.getElementById('task-modal-title').textContent = isHelpRequest ? 'בקשת עזרה חדשה' : 'משימה חדשה';
+  document.getElementById('task-name').value = '';
+  document.getElementById('task-description').value = '';
+  document.getElementById('task-deadline').value = '';
+  document.getElementById('task-id').value = '';
+  document.getElementById('task-project-id').value = currentProjectId;
+  document.getElementById('task-tags-hidden').value = '[]';
+  document.getElementById('task-status').value = 'not-started';
+  document.getElementById('task-blocked-reason').value = '';
+  document.getElementById('task-waiting-for').value = '';
+
+  // הסתרת שדות מותנים בסטטוס
+  document.getElementById('task-blocked-reason-container').style.display = 'none';
+  document.getElementById('task-waiting-for-container').style.display = 'none';
+
+  // איפוס תגיות
+  document.getElementById('task-tags-items').innerHTML = '';
+  document.getElementById('task-tag-input').value = '';
+
+  // איפוס קבצים
+  uploadedFiles = [];
+  document.getElementById('file-preview').innerHTML = '';
+
+  // מילוי תאריך היעד של הפרויקט כברירת מחדל אם קיים
+  if (currentProjectData && currentProjectData.deadline) {
+    document.getElementById('task-deadline').value = currentProjectData.deadline;
+  }
+
+  // הצגת בחירת אחראי רק בפרויקטים צוותיים
+  const assigneeSection = document.getElementById('task-assignee-section');
+  const assigneeSelect = document.getElementById('task-assignee');
+
+  if (currentProjectData && currentProjectData.type === 'team') {
+    // מילוי רשימת חברי הצוות
+    assigneeSelect.innerHTML = '<option value="">לא משויך</option>';
+
+    currentProjectMembers.forEach(member => {
+      const option = document.createElement('option');
+      option.value = member.userId;
+      option.textContent = member.displayName;
+      assigneeSelect.appendChild(option);
+    });
+
+    assigneeSection.classList.remove('hidden');
+  } else {
+    assigneeSection.classList.add('hidden');
+  }
+
+  // חלק בקשת העזרה
+  document.getElementById('task-help-section').classList.toggle('hidden', !(currentProjectData && currentProjectData.type === 'team'));
+  document.getElementById('task-help-request').checked = isHelpRequest;
+
+  document.getElementById('task-modal').style.display = 'block';
+}
+
+function showEditTaskModal(taskId, task) {
+  document.getElementById('task-modal-title').textContent = task.isHelpRequest ? 'עריכת בקשת עזרה' : 'עריכת משימה';
+  document.getElementById('task-name').value = task.name || '';
+  document.getElementById('task-description').value = task.description || '';
+  document.getElementById('task-deadline').value = task.deadline || '';
+  document.getElementById('task-id').value = taskId;
+  document.getElementById('task-project-id').value = task.projectId;
+  document.getElementById('task-status').value = task.status || 'not-started';
+  document.getElementById('task-blocked-reason').value = task.blockedReason || '';
+  document.getElementById('task-waiting-for').value = task.waitingFor || '';
+
+  // הצגת/הסתרת שדות מותנים בסטטוס
+  document.getElementById('task-blocked-reason-container').style.display = (task.status === 'blocked') ? 'block' : 'none';
+  document.getElementById('task-waiting-for-container').style.display = (task.status === 'waiting') ? 'block' : 'none';
+
+  // טעינת תגיות
+  loadTagsToInput(task.tags || []);
+
+  // טעינת קבצים
+  loadTaskFiles(taskId);
+
+  // הצגת בחירת אחראי רק בפרויקטים צוותיים
+  const assigneeSection = document.getElementById('task-assignee-section');
+  const assigneeSelect = document.getElementById('task-assignee');
+
+  if (currentProjectData && currentProjectData.type === 'team') {
+    // מילוי רשימת חברי הצוות
+    assigneeSelect.innerHTML = '<option value="">לא משויך</option>';
+
+    currentProjectMembers.forEach(member => {
+      const option = document.createElement('option');
+      option.value = member.userId;
+      option.textContent = member.displayName;
+
+      // בחירת האחראי הנוכחי
+      if (task.assigneeId && task.assigneeId === member.userId) {
+        option.selected = true;
+      }
+
+      assigneeSelect.appendChild(option);
+    });
+
+    assigneeSection.classList.remove('hidden');
+  } else {
+    assigneeSection.classList.add('hidden');
+  }
+
+  // חלק בקשת העזרה
+  document.getElementById('task-help-section').classList.toggle('hidden', !(currentProjectData && currentProjectData.type === 'team'));
+  document.getElementById('task-help-request').checked = task.isHelpRequest || false;
+
+  document.getElementById('task-modal').style.display = 'block';
+}
+
+async function saveTask() {
+  const name = document.getElementById('task-name').value.trim();
+  const description = document.getElementById('task-description').value.trim();
+  const deadline = document.getElementById('task-deadline').value;
+  const taskId = document.getElementById('task-id').value;
+  const projectId = document.getElementById('task-project-id').value;
+  const tagsJson = document.getElementById('task-tags-hidden').value;
+  const tags = tagsJson ? JSON.parse(tagsJson) : [];
+  const status = document.getElementById('task-status').value;
+  const blockedReason = document.getElementById('task-blocked-reason').value.trim();
+  const waitingFor = document.getElementById('task-waiting-for').value.trim();
+
+  // מידע על בקשת העזרה
+  const isHelpRequest = document.getElementById('task-help-request').checked;
+
+  // מידע על האחראי (רק בפרויקטים צוותיים)
+  let assigneeId = null;
+  if (currentProjectData && currentProjectData.type === 'team') {
+    assigneeId = document.getElementById('task-assignee').value;
+
+    // אם זו בקשת עזרה ללא אחראי, לאפס את האחראי
+    if (isHelpRequest && !assigneeId) {
+      assigneeId = null;
+    }
+  }
+
+  if (!name) {
+    showNotification('שדה חובה', 'אנא הזן שם למשימה', 'warning');
+    return;
+  }
+
+  if (!projectId) {
+    showNotification('שגיאה', 'לא נבחר פרויקט', 'danger');
+    return;
+  }
+
+  showLoader();
+
+  const taskData = {
+    name,
+    description,
+    deadline,
+    projectId,
+    tags,
+    isHelpRequest,
+    status,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  // הוספת מידע על מצב המשימה בהתאם לסטטוס
+  if (status === 'blocked' && blockedReason) {
+    taskData.blockedReason = blockedReason;
+  } else if (taskId) {
+    // מחיקת השדה אם המשימה לא תקועה - רק בעדכון משימה קיימת
+    taskData.blockedReason = firebase.firestore.FieldValue.delete();
+  }
+
+  if (status === 'waiting' && waitingFor) {
+    taskData.waitingFor = waitingFor;
+  } else if (taskId) {
+    // מחיקת השדה אם המשימה לא ממתינה - רק בעדכון משימה קיימת
+    taskData.waitingFor = firebase.firestore.FieldValue.delete();
+  }
+
+  // הוספת שדה האחראי רק בפרויקט צוותי
+  if (currentProjectData && currentProjectData.type === 'team') {
+    taskData.assigneeId = assigneeId || null;
+  }
+
+  try {
+    // העלאת קבצים ל-Storage, אם יש
+    let filesMetadata = [];
+    if (uploadedFiles.length > 0) {
+      // המשימה חייבת להיות קיימת כדי להעלות אליה קבצים
+      let actualTaskId = taskId;
+
+      if (!actualTaskId) {
+        // אם זו משימה חדשה, יצירה מראש של ה-ID שלה
+        const newTaskRef = db.collection('tasks').doc();
+        actualTaskId = newTaskRef.id;
+      }
+
+      // העלאת הקבצים
+      filesMetadata = await uploadTaskFiles(actualTaskId);
+
+      // הוספת מידע הקבצים לנתוני המשימה
+      if (taskId) {
+        // אם זו משימה קיימת, שמירת הקבצים הקיימים ואז הוספת החדשים
+        const existingTask = await db.collection('tasks').doc(taskId).get();
+        if (existingTask.exists) {
+          const existingFiles = existingTask.data().files || [];
+          taskData.files = [...existingFiles, ...filesMetadata];
+        } else {
+          taskData.files = filesMetadata;
+        }
+      } else {
+        // אם זו משימה חדשה
+        taskData.files = filesMetadata;
+      }
+    }
+
+    let savePromise;
+    let actionType;
+
+    if (taskId) {
+      // עדכון משימה קיימת
+      savePromise = db.collection('tasks').doc(taskId).update(taskData);
+      actionType = 'ערך משימה';
+    } else {
+      // יצירת משימה חדשה - צריך להסיר את פעולות המחיקה
+      // במקרה של משימה חדשה, פשוט לא כוללים את השדות שלא רלוונטיים
+      if (taskData.blockedReason === firebase.firestore.FieldValue.delete()) {
+        delete taskData.blockedReason;
+      }
+
+      if (taskData.waitingFor === firebase.firestore.FieldValue.delete()) {
+        delete taskData.waitingFor;
+      }
+
+      taskData.createdBy = currentUser.uid;
+      taskData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+
+      // אם יצרנו מראש ID (למקרה של העלאת קבצים), נשתמש בו
+      if (filesMetadata.length > 0) {
+        const preCreatedTaskId = filesMetadata[0].path.split('/')[1];
+        savePromise = db.collection('tasks').doc(preCreatedTaskId).set(taskData);
+      } else {
+        savePromise = db.collection('tasks').add(taskData);
+      }
+
+      actionType = 'יצר משימה';
+    }
+
+    savePromise
+      .then((result) => {
+        hideLoader();
+        document.getElementById('task-modal').style.display = 'none';
+
+        // רישום פעילות
+        const idToLog = taskId || (result && result.id ? result.id : null);
+        if (idToLog) {
+          logActivity(actionType, idToLog, `${actionType} "${name}"`);
+        }
+
+        showNotification('המשימה נשמרה', 'המשימה נשמרה בהצלחה', 'success');
+
+        // עדכון הסינון לפי תגיות
+        updateProjectTaskTagsDropdown(projectId);
+
+        // טעינה מחדש של המשימות
+        if (currentTaskView === "list") {
+          loadTasks(projectId);
+        } else {
+          displayTasksByAssignee();
+        }
+
+        // רענון גרף התקדמות הפרויקט
+        loadProjectProgressChart(projectId);
+      })
+      .catch(error => {
+        hideLoader();
+        console.error("Error saving task:", error);
+        showNotification('שגיאה', 'שגיאה בשמירת משימה: ' + error.message, 'danger');
+      });
+  } catch (error) {
+    hideLoader();
+    console.error("Error processing task save:", error);
+    showNotification('שגיאה', 'שגיאה בעיבוד המשימה: ' + error.message, 'danger');
+  }
+}
+
+function deleteTask(taskId) {
+  showLoader();
+
+  // קבלת נתוני המשימה לרישום פעילות
+  db.collection('tasks').doc(taskId).get()
+    .then(doc => {
+      if (doc.exists) {
+        const taskData = doc.data();
+
+        // מחיקת קבצים אם קיימים
+        const files = taskData.files || [];
+        const deleteFilePromises = files.map(file =>
+          storage.ref(file.path).delete().catch(error => {
+            console.error("Error deleting file:", error);
+            // המשך גם אם יש שגיאה במחיקת קובץ
+            return null;
+          })
+        );
+
+        return Promise.all(deleteFilePromises)
+          .then(() => {
+            // מחיקת המשימה עצמה
+            return db.collection('tasks').doc(taskId).delete()
+              .then(() => {
+                // רישום פעילות
+                logActivity('מחק משימה', taskId, `מחק את המשימה "${taskData.name}"`);
+
+                hideLoader();
+                showNotification('המשימה נמחקה', 'המשימה נמחקה בהצלחה', 'success');
+
+                // רענון תצוגת המשימות
+                if (currentTaskView === "list") {
+                  loadTasks(currentProjectId);
+                } else {
+                  displayTasksByAssignee();
+                }
+
+                // רענון גרף התקדמות הפרויקט
+                loadProjectProgressChart(currentProjectId);
+              });
+          });
+      } else {
+        // המשימה לא נמצאה
+        return db.collection('tasks').doc(taskId).delete();
+      }
+    })
+    .catch(error => {
+      hideLoader();
+      console.error("Error deleting task:", error);
+      showNotification('שגיאה', 'שגיאה במחיקת משימה: ' + error.message, 'danger');
+    });
+}
+
+// חיפוש משתמש לפי אימייל או שם משתמש
+function searchUserByEmailOrName() {
+  const searchTerm = document.getElementById('member-email').value.trim();
+  const resultsDiv = document.getElementById('member-search-results');
+
+  if (!searchTerm || searchTerm.length < 3) {
+    resultsDiv.innerHTML = '<div>הזן לפחות 3 תווים לחיפוש</div>';
+    return;
+  }
+
+  resultsDiv.innerHTML = '<div class="text-center">מחפש משתמש...</div>';
+
+  // שינוי שם האלמנט בממשק
+  document.getElementById('member-email-label').textContent = 'חיפוש (אימייל או שם):';
+
+  // חיפוש לפי אימייל מדויק
+  const emailQuery = db.collection('users')
+    .where('email', '==', searchTerm.toLowerCase())
+    .where('status', '==', 'approved')  // רק משתמשים מאושרים
+    .limit(5);
+
+  // חיפוש לפי שם משתמש
+  const nameQuery = db.collection('users')
+    .where('displayName', '>=', searchTerm)
+    .where('displayName', '<=', searchTerm + '\uf8ff') // טריק לחיפוש prefix
+    .where('status', '==', 'approved')  // רק משתמשים מאושרים
+    .limit(5);
+
+  // ביצוע שני החיפושים במקביל
+  Promise.all([emailQuery.get(), nameQuery.get()])
+    .then(([emailResults, nameResults]) => {
+      const uniqueUsers = new Map(); // למניעת כפילויות
+
+      // הוספת תוצאות חיפוש לפי אימייל
+      emailResults.forEach(doc => {
+        uniqueUsers.set(doc.id, doc.data());
+      });
+
+      // הוספת תוצאות חיפוש לפי שם
+      nameResults.forEach(doc => {
+        uniqueUsers.set(doc.id, doc.data());
+      });
+
+      if (uniqueUsers.size === 0) {
+        resultsDiv.innerHTML = '<div style="color: var(--danger); padding: 10px; background-color: #f8d7da; border-radius: 4px; margin-top: 10px;">משתמש לא נמצא. הזמן אותו להירשם למערכת.</div>';
+        document.getElementById('add-member-confirm-btn').disabled = true;
+        return;
+      }
+
+      let resultsHTML = '';
+      let foundUsers = [];
+
+      // עיבוד התוצאות
+      uniqueUsers.forEach((userData, userId) => {
+        // בדיקה אם המשתמש כבר בפרויקט
+        const isMember = currentProjectMembers.some(member => member.userId === userId);
+
+        foundUsers.push({
+          userId: userId,
+          email: userData.email,
+          displayName: userData.displayName || userData.email.split('@')[0],
+          isMember: isMember
+        });
+      });
+
+      // הצגת התוצאות
+      if (foundUsers.length > 0) {
+        resultsHTML = '<div style="margin-top: 15px;">';
+
+        foundUsers.forEach(user => {
+          resultsHTML += `
+            <div class="member-card user-search-result ${user.isMember ? 'already-member' : ''}"
+                 data-id="${user.userId}"
+                 data-email="${user.email}"
+                 data-name="${user.displayName}"
+                 style="${user.isMember ? 'opacity: 0.7;' : ''}">
+              <div class="member-avatar">${user.displayName.charAt(0).toUpperCase()}</div>
+              <div class="member-info">
+                <h4 class="member-name">${user.displayName}</h4>
+                <p class="member-email">${user.email}</p>
+                ${user.isMember ? '<div style="color: var(--warning); margin-top: 5px;">משתמש זה כבר חבר בפרויקט</div>' : ''}
+              </div>
+            </div>
+          `;
+        });
+
+        resultsHTML += '</div>';
+        resultsDiv.innerHTML = resultsHTML;
+
+        // הוספת אירוע בחירת משתמש
+        document.querySelectorAll('.user-search-result').forEach(result => {
+          result.addEventListener('click', function() {
+            if (this.classList.contains('already-member')) {
+              return; // אם כבר חבר אז לא עושים כלום
+            }
+
+            // סימון כל התוצאות כלא נבחרות
+            document.querySelectorAll('.user-search-result').forEach(el => {
+              el.classList.remove('selected');
+              el.style.border = 'none';
+            });
+
+            // סימון הנבחר
+            this.classList.add('selected');
+            this.style.border = '2px solid var(--primary)';
+
+            // הפעלת כפתור ההוספה
+            const addButton = document.getElementById('add-member-confirm-btn');
+            addButton.disabled = false;
+
+            // שמירת פרטי המשתמש הנבחר בכפתור
+            addButton.dataset.id = this.dataset.id;
+            addButton.dataset.email = this.dataset.email;
+            addButton.dataset.name = this.dataset.name;
+          });
+        });
+      }
+    })
+    .catch(error => {
+      console.error("Error searching for user:", error);
+      resultsDiv.innerHTML = '<div style="color: var(--danger);">שגיאה בחיפוש משתמש</div>';
+    });
+}
+
+// הוספת חבר לפרויקט
+function addMemberToProject() {
+  const addButton = document.getElementById('add-member-confirm-btn');
+
+  // בדיקה אם נבחר משתמש
+  if (addButton.disabled || !addButton.dataset.id) {
+    alert('אנא בחר משתמש להוספה');
+    return;
+  }
+
+  const userId = addButton.dataset.id;
+  const userEmail = addButton.dataset.email;
+  const userName = addButton.dataset.name;
+
+  showLoader();
+
+  // בדיקה אם המשתמש כבר קיים בפרויקט
+  if (currentProjectMembers.some(member => member.userId === userId)) {
+    hideLoader();
+    alert('משתמש זה כבר קיים בפרויקט');
+    return;
+  }
+
+  // הוספת המשתמש לרשימת החברים של הפרויקט
+  db.collection('project_members').add({
+    projectId: currentProjectId,
+    userId: userId,
+    email: userEmail,
+    displayName: userName,
+    role: 'member',
+    addedBy: currentUser.uid,
+    addedAt: firebase.firestore.FieldValue.serverTimestamp()
+  })
+  .then(() => {
+    hideLoader();
+    document.getElementById('team-member-modal').style.display = 'none';
+
+    // רישום פעילות
+    logActivity('הוסיף חבר צוות', currentProjectId, `הוסיף את ${userName} לפרויקט`);
+
+    showNotification('חבר צוות נוסף', 'חבר הצוות נוסף בהצלחה לפרויקט', 'success');
+
+    loadProjectMembers(currentProjectId);
+  })
+  .catch(error => {
+    hideLoader();
+    console.error("Error adding team member:", error);
+    alert('שגיאה בהוספת חבר צוות');
+  });
+}
+
+// פונקציות עבור עדכון הדשבורד
+function updateProjectsDropdown() {
+  const projectSelect = document.getElementById('dashboard-filter-project');
+  projectSelect.innerHTML = '<option value="all">כל הפרויקטים</option>';
+
+  allProjects.forEach(project => {
+    const option = document.createElement('option');
+    option.value = project.id;
+    option.textContent = project.data.name;
+    projectSelect.appendChild(option);
+  });
+}
+
+function updateTagsDropdown() {
+  const tagSelect = document.getElementById('dashboard-filter-tag');
+  tagSelect.innerHTML = '<option value="all">כל התגיות</option>';
+
+  allTags.forEach(tag => {
+    const option = document.createElement('option');
+    option.value = tag;
+    option.textContent = tag;
+    tagSelect.appendChild(option);
+  });
+}
+
+function loadDashboard() {
+  showLoader();
+
+  // ראשית טען את כל הפרויקטים עבור הסינון
+  updateProjectsDropdown();
+
+  // טעינת המשימות של המשתמש
+  Promise.all([
+    // משימות שהמשתמש אחראי עליהן
+    db.collection('tasks')
+      .where('assigneeId', '==', currentUser.uid)
+      .get(),
+
+    // משימות בפרויקטים אישיים של המשתמש
+    db.collection('projects')
+      .where('userId', '==', currentUser.uid)
+      .where('type', '==', 'personal')
+      .get()
+      .then(projectsSnapshot => {
+        const projectIds = projectsSnapshot.docs.map(doc => doc.id);
+        if (projectIds.length === 0) return { docs: [] };
+
+        return db.collection('tasks')
+          .where('projectId', 'in', projectIds)
+          .get();
+      }),
+
+    // משימות שהן בקשות עזרה בפרויקטים של המשתמש
+    db.collection('projects')
+      .where('userId', '==', currentUser.uid)
+      .get()
+      .then(projectsSnapshot => {
+        const projectIds = projectsSnapshot.docs.map(doc => doc.id);
+        if (projectIds.length === 0) return { docs: [] };
+
+        return db.collection('tasks')
+          .where('projectId', 'in', projectIds)
+          .where('isHelpRequest', '==', true)
+          .get();
+      }),
+
+    // בקשות עזרה בפרויקטים שהמשתמש חבר בהם
+    db.collection('project_members')
+      .where('userId', '==', currentUser.uid)
+      .get()
+      .then(membershipsSnapshot => {
+        const projectIds = membershipsSnapshot.docs.map(doc => doc.data().projectId);
+        if (projectIds.length === 0) return { docs: [] };
+
+        // Firebase מגביל queries ל-10 ערכים ב-in לכל היותר
+        const projectBatches = [];
+        for (let i = 0; i < projectIds.length; i += 10) {
+          const batch = projectIds.slice(i, i + 10);
+          projectBatches.push(batch);
+        }
+
+        const queries = projectBatches.map(batch =>
+          db.collection('tasks')
+            .where('projectId', 'in', batch)
+            .where('isHelpRequest', '==', true)
+            .get()
+        );
+
+        return Promise.all(queries).then(results => {
+          // מיזוג התוצאות מכל ה-queries
+          const mergedDocs = [];
+          results.forEach(result => {
+            result.docs.forEach(doc => mergedDocs.push(doc));
+          });
+          return { docs: mergedDocs };
+        });
+      })
+  ])
+  .then(([assignedTasks, personalTasks, ownedHelpTasks, memberHelpTasks]) => {
+    // איחוד כל המשימות ומניעת כפילויות
+    const uniqueTasks = new Map();
+
+    function addToMap(snapshot, source) {
+      snapshot.docs.forEach(doc => {
+        if (!uniqueTasks.has(doc.id)) {
+          const taskData = doc.data();
+          uniqueTasks.set(doc.id, {
+            id: doc.id,
+            data: taskData,
+            source: source
+          });
+
+          // שמירת תגיות לסינון
+          if (taskData.tags && taskData.tags.length > 0) {
+            taskData.tags.forEach(tag => allTags.add(tag));
+          }
+        }
+      });
+    }
+
+    addToMap(assignedTasks, 'assigned');
+    addToMap(personalTasks, 'personal');
+    addToMap(ownedHelpTasks, 'ownedHelp');
+    addToMap(memberHelpTasks, 'memberHelp');
+
+    // שמירת המשימות במשתנה גלובלי
+    userDashboardTasks = Array.from(uniqueTasks.values());
+
+    // עדכון הסינון של תגיות
+    updateTagsDropdown();
+
+    // בדיקת תאריכי יעד
+    checkDeadlines();
+
+    // עדכון מונים בדשבורד
+    updateDashboardCounts();
+
+    // הצגת המשימות בדשבורד
+    filterDashboardTasks();
+
+    hideLoader();
+  })
+  .catch(error => {
+    console.error("Error loading dashboard:", error);
+    hideLoader();
+    showNotification('שגיאה בטעינת משימות', error.message, 'danger');
+  });
+}
+
+// פונקציה לעדכון מונים בדשבורד
+function updateDashboardCounts() {
+  // ספירת כל הנתונים הנדרשים
+  const activeTasksCount = userDashboardTasks.filter(task => task.data.status !== 'completed').length;
+  const completedTasksCount = userDashboardTasks.filter(task => task.data.status === 'completed').length;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // ספירת משימות באיחור
+  const overdueTasksCount = userDashboardTasks.filter(task => {
+    if (task.data.status === 'completed') return false;
+    if (!task.data.deadline) return false;
+    
+    const deadlineDate = new Date(task.data.deadline);
+    return deadlineDate < today;
+  }).length;
+  
+  // ספירת פרויקטים
+  const projectsCount = allProjects.length;
+  
+  // עדכון המונים בממשק
+  document.getElementById('active-tasks-count').textContent = activeTasksCount;
+  document.getElementById('completed-tasks-count').textContent = completedTasksCount;
+  document.getElementById('overdue-tasks-count').textContent = overdueTasksCount;
+  document.getElementById('projects-count').textContent = projectsCount;
+}
+
+function filterDashboardTasks(searchTerm = '') {
+  const projectFilter = document.getElementById('dashboard-filter-project').value;
+  const sortBy = document.getElementById('dashboard-sort-by').value;
+  const tagFilter = document.getElementById('dashboard-filter-tag').value;
+  const statusFilter = document.getElementById('dashboard-filter-status').value;
+
+  // סינון המשימות
+  let filteredTasks = userDashboardTasks.filter(task => {
+    // סינון לפי פרויקט
+    if (projectFilter !== 'all' && task.data.projectId !== projectFilter) {
+      return false;
+    }
+
+    // סינון לפי תגית
+    if (tagFilter !== 'all') {
+      const taskTags = task.data.tags || [];
+      if (!taskTags.includes(tagFilter)) {
+        return false;
+      }
+    }
+
+    // סינון לפי סטטוס
+    if (statusFilter !== 'all' && task.data.status !== statusFilter) {
+      return false;
+    }
+
+    // סינון לפי טקסט חיפוש
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const nameMatch = task.data.name && task.data.name.toLowerCase().includes(searchLower);
+      const descMatch = task.data.description && task.data.description.toLowerCase().includes(searchLower);
+      const tagsMatch = task.data.tags && task.data.tags.some(tag => tag.toLowerCase().includes(searchLower));
+
+      return nameMatch || descMatch || tagsMatch;
+    }
+
+    return true;
+  });
+
+  // מיון המשימות
+  filteredTasks.sort((a, b) => {
+    switch (sortBy) {
+      case 'deadline':
+        // אם אין תאריך, לשים בסוף
+        if (!a.data.deadline) return 1;
+        if (!b.data.deadline) return -1;
+        return new Date(a.data.deadline) - new Date(b.data.deadline);
+      case 'name':
+        return a.data.name.localeCompare(b.data.name);
+      case 'project':
+        const projectA = allProjects.find(p => p.id === a.data.projectId);
+        const projectB = allProjects.find(p => p.id === b.data.projectId);
+        return (projectA?.data.name || '').localeCompare(projectB?.data.name || '');
+      case 'status':
+        const statusOrder = {
+          'blocked': 0,
+          'waiting': 1,
+          'not-started': 2,
+          'in-progress': 3,
+          'completed': 4
+        };
+        const statusA = statusOrder[a.data.status] || 999;
+        const statusB = statusOrder[b.data.status] || 999;
+        return statusA - statusB;
+      default:
+        return 0;
+    }
+  });
+
+  // הצגת המשימות
+  displayDashboardTasks(filteredTasks);
+}
+
+function displayDashboardTasks(tasks) {
+  const pendingTasksContainer = document.getElementById('dashboard-tasks');
+  const completedTasksContainer = document.getElementById('dashboard-completed-tasks');
+  const helpTasksContainer = document.getElementById('dashboard-help-tasks');
+
+  // ניקוי המיכלים
+  pendingTasksContainer.innerHTML = '';
+  completedTasksContainer.innerHTML = '';
+  helpTasksContainer.innerHTML = '';
+
+  // בדיקה אם יש משימות
+  if (tasks.length === 0) {
+    pendingTasksContainer.innerHTML = '<div>אין משימות לתצוגה.</div>';
+    completedTasksContainer.innerHTML = '<div>אין משימות שהושלמו.</div>';
+    helpTasksContainer.innerHTML = '<div>אין בקשות עזרה.</div>';
+    return;
+  }
+
+  // סינון המשימות לפי סוג
+  const completedTasks = tasks.filter(task => task.data.status === 'completed');
+  const helpTasks = tasks.filter(task => task.data.isHelpRequest && task.data.status !== 'completed');
+  const pendingTasks = tasks.filter(task => task.data.status !== 'completed' && !task.data.isHelpRequest);
+
+  // הצגת המשימות הפתוחות
+  if (pendingTasks.length === 0) {
+    pendingTasksContainer.innerHTML = '<div>אין משימות לביצוע.</div>';
+  } else {
+    pendingTasks.forEach(task => {
+      pendingTasksContainer.appendChild(createTaskElement(task));
+    });
+  }
+
+  // הצגת המשימות שהושלמו
+  if (completedTasks.length === 0) {
+    completedTasksContainer.innerHTML = '<div>אין משימות שהושלמו.</div>';
+  } else {
+    completedTasks.forEach(task => {
+      completedTasksContainer.appendChild(createTaskElement(task));
+    });
+  }
+
+  // הצגת בקשות העזרה
+  if (helpTasks.length === 0) {
+    helpTasksContainer.innerHTML = '<div>אין בקשות עזרה כרגע.</div>';
+  } else {
+    helpTasks.forEach(task => {
+      helpTasksContainer.appendChild(createTaskElement(task));
+    });
+  }
+}
+
+// פונקציות עבור התגיות
+function addTag(tagName) {
+  const tagsContainer = document.getElementById('task-tags-items');
+  const existingTags = Array.from(tagsContainer.querySelectorAll('.tag-item')).map(tag =>
+    tag.textContent.replace('×', '').trim()
+  );
+
+  if (existingTags.includes(tagName)) {
+    return; // מניעת כפילויות
+  }
+
+  const tagElement = document.createElement('div');
+  tagElement.className = 'tag-item';
+  tagElement.innerHTML = `
+    ${tagName}
+    <span class="tag-close">×</span>
+  `;
+
+  tagElement.querySelector('.tag-close').addEventListener('click', function() {
+    tagElement.remove();
+    updateTagsHiddenField();
+  });
+
+  tagsContainer.appendChild(tagElement);
+  updateTagsHiddenField();
+}
+
+function updateTagsHiddenField() {
+  const tagsContainer = document.getElementById('task-tags-items');
+  const tags = Array.from(tagsContainer.querySelectorAll('.tag-item')).map(tag =>
+    tag.textContent.replace('×', '').trim()
+  );
+
+  document.getElementById('task-tags-hidden').value = JSON.stringify(tags);
+}
+
+function loadTagsToInput(tags) {
+  const tagsContainer = document.getElementById('task-tags-items');
+  tagsContainer.innerHTML = '';
+
+  if (tags && tags.length > 0) {
+    tags.forEach(tag => addTag(tag));
+  }
+}
+
+// עדכון גרף התקדמות הפרויקט
+function loadProjectProgressChart(projectId) {
+  // בדיקה אם יש אלמנט קנבס לגרף
+  const canvas = document.getElementById('project-progress-chart');
+  if (!canvas) return;
+
+  // מחיקת גרף קיים אם יש
+  if (charts.projectProgress) {
+    charts.projectProgress.destroy();
+  }
+
+  // חשוב: קבלת ההקשר של הקנבס
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    console.error("לא ניתן לקבל הקשר 2d מהקנבס");
+    return;
+  }
+
+  // טעינת המשימות של הפרויקט
+  db.collection('tasks')
+    .where('projectId', '==', projectId)
+    .get()
+    .then(snapshot => {
+      if (snapshot.empty) {
+        // אין משימות, מציג גרף ריק
+        charts.projectProgress = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: ['אין משימות'],
+            datasets: [{
+              data: [1],
+              backgroundColor: ['#e9ecef']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  boxWidth: 12,
+                  padding: 10
+                }
+              }
+            },
+            cutout: '60%'
+          }
+        });
+        return;
+      }
+
+      // חישוב סטטיסטיקות של המשימות
+      const statuses = {
+        'not-started': 0,
+        'in-progress': 0,
+        'waiting': 0,
+        'blocked': 0,
+        'completed': 0
+      };
+
+      snapshot.forEach(doc => {
+        const task = doc.data();
+        const status = task.status || 'not-started';
+
+        if (statuses[status] !== undefined) {
+          statuses[status]++;
+        }
+      });
+
+      // יצירת הגרף
+      charts.projectProgress = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: [
+            'טרם התחילה',
+            'בתהליך',
+            'ממתינה',
+            'תקועה',
+            'הושלמה'
+          ],
+          datasets: [{
+            data: [
+              statuses['not-started'],
+              statuses['in-progress'],
+              statuses['waiting'],
+              statuses['blocked'],
+              statuses['completed']
+            ],
+            backgroundColor: [
+              '#e9ecef',  // טרם התחילה
+              '#4895ef',  // בתהליך
+              '#ffc107',  // ממתינה
+              '#dc3545',  // תקועה
+              '#28a745'   // הושלמה
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                boxWidth: 12,
+                padding: 10
+              }
+            },
+            tooltip: {
+              bodyFont: {
+                size: 12
+              }
+            }
+          },
+          cutout: '60%'
+        }
+      });
+
+      // עדכון אחוז ההתקדמות בכותרת הפרויקט
+      const totalTasks = snapshot.size;
+      const completedTasks = snapshot.docs.filter(doc => doc.data().status === 'completed').length;
+      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      
+      const progressElement = document.getElementById('project-detail-progress');
+      if (progressElement) {
+        progressElement.textContent = `${progress}% הושלם`;
+      }
+    })
+    .catch(error => {
+      console.error('Error loading project progress chart:', error);
+    });
+}
+
+// פונקציה להצגת מודל צ'אט משימה
+function showTaskChat(taskId, taskName) {
+  document.getElementById('chat-task-name').textContent = taskName;
+  document.getElementById('chat-task-id').value = taskId;
+  document.getElementById('chat-message').value = '';
+
+  // טעינת הודעות צ'אט קודמות
+  const chatContainer = document.getElementById('task-chat-messages');
+  chatContainer.innerHTML = '<div class="chat-message"><div class="chat-message-content">טוען הודעות...</div></div>';
+
+  db.collection('task_messages')
+    .where('taskId', '==', taskId)
+    .orderBy('timestamp', 'asc')
+    .get()
+    .then(snapshot => {
+      chatContainer.innerHTML = '';
+
+      if (snapshot.empty) {
+        chatContainer.innerHTML = `
+          <div class="chat-message">
+            <div class="chat-message-sender">מערכת</div>
+            <div class="chat-message-time">עכשיו</div>
+            <div class="chat-message-content">ברוכים הבאים לצ'אט המשימה!</div>
+          </div>
+        `;
+        return;
+      }
+
+      snapshot.forEach(doc => {
+        const message = doc.data();
+        addChatMessageToUI(message, currentUser.uid);
+      });
+
+      // גלילה לתחתית
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    })
+    .catch(error => {
+      console.error("Error loading chat messages:", error);
+      chatContainer.innerHTML = '<div class="chat-message"><div class="chat-message-content">שגיאה בטעינת הודעות</div></div>';
+    });
+
+  document.getElementById('task-chat-modal').style.display = 'block';
+}
+
+function sendChatMessage() {
+  const message = document.getElementById('chat-message').value.trim();
+  const taskId = document.getElementById('chat-task-id').value;
+
+  if (!message || !taskId) return;
+
+  // שליחת ההודעה לפיירסטור
+  const messageData = {
+    taskId: taskId,
+    userId: currentUser.uid,
+    displayName: currentUser.displayName || currentUser.email.split('@')[0],
+    message: message,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  db.collection('task_messages').add(messageData)
+    .then(() => {
+      // ניקוי שדה ההזנה
+      document.getElementById('chat-message').value = '';
+
+      // הוספת ההודעה ל-UI
+      addChatMessageToUI({
+        ...messageData,
+        timestamp: new Date()
+      }, currentUser.uid);
+
+      // גלילה לתחתית
+      const chatContainer = document.getElementById('task-chat-messages');
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      // עדכון זמן העדכון האחרון של המשימה
+      db.collection('tasks').doc(taskId).update({
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // רישום פעילות
+      logActivity('שלח הודעה בצאט', taskId, 'שלח הודעה בצאט המשימה');
+    })
+    .catch(error => {
+      console.error("Error sending message:", error);
+      showNotification('שגיאה', 'אירעה שגיאה בשליחת ההודעה', 'danger');
+    });
+}
+
+function addChatMessageToUI(message, currentUserId) {
+  const chatContainer = document.getElementById('task-chat-messages');
+  const isCurrentUser = message.userId === currentUserId;
+
+  const messageElement = document.createElement('div');
+  messageElement.className = `chat-message ${isCurrentUser ? 'outgoing' : ''}`;
+
+  // פורמט תאריך
+  const timestamp = message.timestamp instanceof Date ? message.timestamp :
+                    message.timestamp ? new Date(message.timestamp.toDate()) : new Date();
+  const timeStr = timestamp.toLocaleTimeString('he-IL', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  messageElement.innerHTML = `
+    ${!isCurrentUser ? `<div class="chat-message-sender">${message.displayName}</div>` : ''}
+    <div class="chat-message-time">${timeStr}</div>
+    <div class="chat-message-content">${message.message}</div>
+  `;
+
+  chatContainer.appendChild(messageElement);
+}
   
       // הפעלת אתחול Firebase בטעינת הדף
       document.addEventListener('DOMContentLoaded', initializeFirebase);
