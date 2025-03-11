@@ -3051,8 +3051,19 @@
       }
   
       function hideLoader() {
-        document.getElementById('loader').classList.add('hidden');
+    console.log('hideLoader: מסיר את מסך הטעינה');
+    try {
+      const loader = document.getElementById('loader');
+      if (loader) {
+        loader.classList.add('hidden');
+        console.log('hideLoader: מסך הטעינה הוסתר בהצלחה');
+      } else {
+        console.error('hideLoader: אלמנט הטעינה לא נמצא');
       }
+    } catch (error) {
+      console.error('hideLoader: שגיאה בהסתרת מסך הטעינה:', error);
+    }
+  }
   
       // טעינת העדפות משתמש
       function loadUserPreferences() {
