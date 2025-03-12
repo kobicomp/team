@@ -5517,7 +5517,83 @@
     // === התחלת האפליקציה ===
     
     // מאזינים לאירועים
-    function initEventListeners() {
+    // מאזיני אירועים לכל האפליקציה
+  function initEventListeners() {
+    try {
+      // אירועי מודאל חבר צוות - כאן מתרחשת השגיאה
+      safeAddEventListener('member-email', 'input', () => {
+        const inputElement = document.getElementById('member-email');
+        if (inputElement && inputElement.value.trim().length >= 3) {
+          searchUserByEmailOrName();
+        }
+      });
+      
+      safeAddEventListener('add-member-confirm-btn', 'click', addMemberToProject);
+      
+      // אירועי הגדרות
+      const settingsMenuLinks = document.querySelectorAll('.settings-menu-link');
+      if (settingsMenuLinks && settingsMenuLinks.length > 0) {
+        settingsMenuLinks.forEach(link => {
+          link.addEventListener('click', e => {
+            e.preventDefault();
+            
+            // עדכון המצב הפעיל
+            document.querySelectorAll('.settings-menu-link').forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+            
+            // מעבר לפאנל המתאים
+            const settingsId = link.dataset.settings;
+            document.querySelectorAll('.settings-panel').forEach(panel => panel.classList.add('hidden'));
+            const settingsPanel = document.getElementById(`settings-${settingsId}`);
+            if (settingsPanel) {
+              settingsPanel.classList.remove('hidden');
+            }
+          });
+        });
+      }
+      
+      // אירועי סינון פרויקטים
+      const filterTabs = document.querySelectorAll('.tabs .tab[data-filter]');
+      if (filterTabs && filterTabs.length > 0) {
+        filterTabs.forEach(tab => {
+          tab.addEventListener('click', () => {
+            document.querySelectorAll('.tabs .tab[data-filter]').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            AppState.currentFilter = tab.dataset.filter;
+            ProjectManager.loadProjects();
+          });
+        });
+      }
+      
+      // אירוע מודל סגירה
+      const modalCloseButtons = document.querySelectorAll('.modal-close');
+      if (modalCloseButtons && modalCloseButtons.length > 0) {
+        modalCloseButtons.forEach(closeBtn => {
+          closeBtn.addEventListener('click', () => {
+            const modal = closeBtn.closest('.modal');
+            if (modal) {
+              AppModals.close(modal.id);
+            }
+          });
+        });
+      }
+      
+      // אירוע סגירת מודל בלחיצה מחוץ
+      const modals = document.querySelectorAll('.modal');
+      if (modals && modals.length > 0) {
+        modals.forEach(modal => {
+          modal.addEventListener('click', e => {
+            if (e.target === modal) {
+              AppModals.close(modal.id);
+            }
+          });
+        });
+      }
+    } catch (error) {
+      console.error('שגיאה באתחול מאזיני אירועים:', error);
+    }
+  }
       // אירועי התחברות/הרשמה
       document.getElementById('login-btn').addEventListener('click', () => {
         const email = document.getElementById('email').value;
@@ -5867,6 +5943,16 @@
       }
       
       // פונקציה ראשית לאתחול
+      // פונקציית עזר להוספת מאזיני אירועים בצורה בטוחה
+function safeAddEventListener(elementId, eventType, handler) {
+  const element = document.getElementById(elementId);
+  if (element) {
+    element.addEventListener(eventType, handler);
+    return true;
+  }
+  console.warn(`Element with ID '${elementId}' not found when adding ${eventType} listener`);
+  return false;
+}
       function init() {
         console.log('מתחיל אתחול אפליקציה...');
         
