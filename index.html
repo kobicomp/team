@@ -5654,209 +5654,236 @@
       document.getElementById('add-member-confirm-btn').addEventListener('click', addMemberToProject);
       
       // אירועי הגדרות
-      document.querySelectorAll('.settings-menu-link').forEach(link => {
-        link.addEventListener('click', e => {
-          e.preventDefault();
-          
-          // עדכון המצב הפעיל
-          document.querySelectorAll('.settings-menu-link').forEach(l => l.classList.remove('active'));
-          link.classList.add('active');
-          
-          // מעבר לפאנל המתאים
-          const settingsId = link.dataset.settings;
-          document.querySelectorAll('.settings-panel').forEach(panel => panel.classList.add('hidden'));
-          document.getElementById(`settings-${settingsId}`).classList.remove('hidden');
-        });
-      });
-      
-      // אירועי סינון פרויקטים
-      document.querySelectorAll('.tabs .tab[data-filter]').forEach(tab => {
-        tab.addEventListener('click', () => {
-          document.querySelectorAll('.tabs .tab[data-filter]').forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-          
-          AppState.currentFilter = tab.dataset.filter;
-          ProjectManager.loadProjects();
-        });
-      });
-      
-      // אירוע מודל סגירה
-      document.querySelectorAll('.modal-close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', () => {
-          const modal = closeBtn.closest('.modal');
-          if (modal) {
-            AppModals.close(modal.id);
-          }
-        });
-      });
-      
-      // אירוע סגירת מודל בלחיצה מחוץ
-      document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', e => {
-          if (e.target === modal) {
-            AppModals.close(modal.id);
-          }
-        });
-      });
-    }
-    
-    // טיפול בקבצים שהועלו
-    function handleFiles(files) {
-      if (!files || files.length === 0) return;
-      
-      const filePreview = document.getElementById('file-preview');
-      
-      Array.from(files).forEach(file => {
-        // בדיקת גודל הקובץ (מקסימום 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-          AppNotifications.showWarning('קובץ גדול מדי', `הקובץ ${file.name} גדול מדי. מקסימום 10MB מותר.`);
-          return;
+        const settingsMenuLinks = document.querySelectorAll('.settings-menu-link');
+        if (settingsMenuLinks && settingsMenuLinks.length > 0) {
+          settingsMenuLinks.forEach(link => {
+            link.addEventListener('click', e => {
+              e.preventDefault();
+              
+              // עדכון המצב הפעיל
+              document.querySelectorAll('.settings-menu-link').forEach(l => l.classList.remove('active'));
+              link.classList.add('active');
+              
+              // מעבר לפאנל המתאים
+              const settingsId = link.dataset.settings;
+              document.querySelectorAll('.settings-panel').forEach(panel => panel.classList.add('hidden'));
+              const settingsPanel = document.getElementById(`settings-${settingsId}`);
+              if (settingsPanel) {
+                settingsPanel.classList.remove('hidden');
+              }
+            });
+          });
         }
         
-        // הוספה למערך הקבצים
-        AppState.uploadedFiles.push(file);
+        // אירועי סינון פרויקטים
+        const filterTabs = document.querySelectorAll('.tabs .tab[data-filter]');
+        if (filterTabs && filterTabs.length > 0) {
+          filterTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+              document.querySelectorAll('.tabs .tab[data-filter]').forEach(t => t.classList.remove('active'));
+              tab.classList.add('active');
+              
+              AppState.currentFilter = tab.dataset.filter;
+              ProjectManager.loadProjects();
+            });
+          });
+        }
         
-        // קביעת אייקון לפי סוג הקובץ
-        let icon = 'fa-file';
-        if (file.type.startsWith('image/')) icon = 'fa-file-image';
-        else if (file.type.startsWith('video/')) icon = 'fa-file-video';
-        else if (file.type.startsWith('audio/')) icon = 'fa-file-audio';
-        else if (file.type.includes('pdf')) icon = 'fa-file-pdf';
-        else if (file.type.includes('word')) icon = 'fa-file-word';
-        else if (file.type.includes('excel') || file.type.includes('sheet')) icon = 'fa-file-excel';
+        // אירוע מודל סגירה
+        const modalCloseButtons = document.querySelectorAll('.modal-close');
+        if (modalCloseButtons && modalCloseButtons.length > 0) {
+          modalCloseButtons.forEach(closeBtn => {
+            closeBtn.addEventListener('click', () => {
+              const modal = closeBtn.closest('.modal');
+              if (modal) {
+                AppModals.close(modal.id);
+              }
+            });
+          });
+        }
         
-        // תצוגה מקדימה
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-item';
-        fileItem.style.display = 'flex';
-        fileItem.style.alignItems = 'center';
-        fileItem.style.justifyContent = 'space-between';
-        fileItem.style.padding = '5px 10px';
-        fileItem.style.border = '1px solid var(--gray-light)';
-        fileItem.style.borderRadius = '4px';
-        fileItem.style.marginBottom = '5px';
-        
-        fileItem.innerHTML = `
-          <div style="display:flex; align-items:center;">
-            <i class="fas ${icon}" style="margin-left: 5px;"></i>
-            <span>${file.name}</span>
-          </div>
-          <i class="fas fa-times file-delete" style="cursor:pointer; color:var(--danger);" data-name="${file.name}"></i>
-        `;
-        
-        filePreview.appendChild(fileItem);
-      });
+        // אירוע סגירת מודל בלחיצה מחוץ
+        const modals = document.querySelectorAll('.modal');
+        if (modals && modals.length > 0) {
+          modals.forEach(modal => {
+            modal.addEventListener('click', e => {
+              if (e.target === modal) {
+                AppModals.close(modal.id);
+              }
+            });
+          });
+        }
+      }
       
-      // הוספת אירוע מחיקה
-      document.querySelectorAll('.file-delete').forEach(deleteBtn => {
-        deleteBtn.addEventListener('click', function() {
-          const fileName = this.getAttribute('data-name');
+      // טיפול בקבצים שהועלו
+      function handleFiles(files) {
+        if (!files || files.length === 0) return;
+        
+        const filePreview = document.getElementById('file-preview');
+        if (!filePreview) return;
+        
+        Array.from(files).forEach(file => {
+          // בדיקת גודל הקובץ (מקסימום 10MB)
+          if (file.size > 10 * 1024 * 1024) {
+            AppNotifications.showWarning('קובץ גדול מדי', `הקובץ ${file.name} גדול מדי. מקסימום 10MB מותר.`);
+            return;
+          }
           
-          // הסרה מהמערך
-          AppState.uploadedFiles = AppState.uploadedFiles.filter(file => file.name !== fileName);
+          // הוספה למערך הקבצים
+          AppState.uploadedFiles.push(file);
           
-          // הסרה מהתצוגה
-          this.closest('.file-item').remove();
+          // קביעת אייקון לפי סוג הקובץ
+          let icon = 'fa-file';
+          if (file.type.startsWith('image/')) icon = 'fa-file-image';
+          else if (file.type.startsWith('video/')) icon = 'fa-file-video';
+          else if (file.type.startsWith('audio/')) icon = 'fa-file-audio';
+          else if (file.type.includes('pdf')) icon = 'fa-file-pdf';
+          else if (file.type.includes('word')) icon = 'fa-file-word';
+          else if (file.type.includes('excel') || file.type.includes('sheet')) icon = 'fa-file-excel';
+          
+          // תצוגה מקדימה
+          const fileItem = document.createElement('div');
+          fileItem.className = 'file-item';
+          fileItem.style.display = 'flex';
+          fileItem.style.alignItems = 'center';
+          fileItem.style.justifyContent = 'space-between';
+          fileItem.style.padding = '5px 10px';
+          fileItem.style.border = '1px solid var(--gray-light)';
+          fileItem.style.borderRadius = '4px';
+          fileItem.style.marginBottom = '5px';
+          
+          fileItem.innerHTML = `
+            <div style="display:flex; align-items:center;">
+              <i class="fas ${icon}" style="margin-left: 5px;"></i>
+              <span>${file.name}</span>
+            </div>
+            <i class="fas fa-times file-delete" style="cursor:pointer; color:var(--danger);" data-name="${file.name}"></i>
+          `;
+          
+          filePreview.appendChild(fileItem);
         });
-      });
-    }
-    
-    // אתחול Firebase
-    function initializeFirebase() {
-      console.log('מתחיל אתחול Firebase...');
+        
+        // הוספת אירוע מחיקה
+        const deleteButtons = document.querySelectorAll('.file-delete');
+        if (deleteButtons && deleteButtons.length > 0) {
+          deleteButtons.forEach(deleteBtn => {
+            deleteBtn.addEventListener('click', function() {
+              const fileName = this.getAttribute('data-name');
+              
+              // הסרה מהמערך
+              AppState.uploadedFiles = AppState.uploadedFiles.filter(file => file.name !== fileName);
+              
+              // הסרה מהתצוגה
+              this.closest('.file-item').remove();
+            });
+          });
+        }
+      }
       
-      // בדיקה אם כבר אותחל
-      if (firebase.apps && firebase.apps.length > 0) {
-        console.log('Firebase כבר אותחל, משתמש בחיבור קיים');
+      // אתחול Firebase
+      function initializeFirebase() {
+        console.log('מתחיל אתחול Firebase...');
+        
+        // בדיקה אם כבר אותחל
+        if (firebase.apps && firebase.apps.length > 0) {
+          console.log('Firebase כבר אותחל, משתמש בחיבור קיים');
+          
+          try {
+            AppState.auth = firebase.auth();
+            AppState.db = firebase.firestore();
+            AppState.storage = firebase.storage();
+            startAuthListener();
+            return true;
+          } catch (error) {
+            console.error('שגיאה בהשגת שירותי Firebase:', error);
+            const authError = document.getElementById('auth-error');
+            if (authError) {
+              authError.textContent = 'שגיאה באתחול המערכת: ' + error.message;
+              authError.classList.remove('hidden');
+            }
+            return false;
+          }
+        }
+        
+        // תצורת Firebase - בחיבור אמיתי מגיעה מהשרת, כאן נשתמש בתצורה סטטית לצורך הדוגמה
+        const firebaseConfig = {
+          apiKey: "YOUR_API_KEY",
+          authDomain: "your-app.firebaseapp.com",
+          projectId: "your-project-id",
+          storageBucket: "your-app.appspot.com",
+          messagingSenderId: "your-messaging-sender-id",
+          appId: "your-app-id"
+        };
+        
+        // בסביבת ייצור אמיתית תצורת Firebase נטענת מהשרת
+        // החלק הזה הושמט לטובת קוד הדגמה פשוט
         
         try {
+          firebase.initializeApp(firebaseConfig);
+          
+          // קיצורי דרך לשירותים
           AppState.auth = firebase.auth();
           AppState.db = firebase.firestore();
           AppState.storage = firebase.storage();
+          
+          // מינהל המערכת הוא תמיד admin@example.com - בסביבה אמיתית יבוא מהשרת
+          AppState.adminEmail = "admin@example.com";
+          
+          // מעקב אחר התחברות המשתמש
           startAuthListener();
           return true;
         } catch (error) {
-          console.error('שגיאה בהשגת שירותי Firebase:', error);
-          document.getElementById('auth-error').textContent = 'שגיאה באתחול המערכת: ' + error.message;
-          document.getElementById('auth-error').classList.remove('hidden');
+          console.error('שגיאה באתחול Firebase:', error);
+          const authError = document.getElementById('auth-error');
+          if (authError) {
+            authError.textContent = 'שגיאה באתחול המערכת: ' + error.message;
+            authError.classList.remove('hidden');
+          }
           return false;
         }
       }
       
-      // תצורת Firebase - בחיבור אמיתי מגיעה מהשרת, כאן נשתמש בתצורה סטטית לצורך הדוגמה
-      const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "your-app.firebaseapp.com",
-        projectId: "your-project-id",
-        storageBucket: "your-app.appspot.com",
-        messagingSenderId: "your-messaging-sender-id",
-        appId: "your-app-id"
-      };
-      
-      // בסביבת ייצור אמיתית תצורת Firebase נטענת מהשרת
-      // החלק הזה הושמט לטובת קוד הדגמה פשוט
-      
-      try {
-        firebase.initializeApp(firebaseConfig);
+      // מאזין מצב התחברות
+      function startAuthListener() {
+        // טיימר בטיחות
+        const safetyTimer = setTimeout(() => {
+          console.error('פסק זמן - מאזין האימות לא הגיב תוך 15 שניות');
+          const authError = document.getElementById('auth-error');
+          if (authError) {
+            authError.textContent = 'האימות נתקע. נסה לרענן את הדף.';
+            authError.classList.remove('hidden');
+          }
+          AppLoader.hide();
+          forceAppVisibility();
+        }, 15000);
         
-        // קיצורי דרך לשירותים
-        AppState.auth = firebase.auth();
-        AppState.db = firebase.firestore();
-        AppState.storage = firebase.storage();
-        
-        // מינהל המערכת הוא תמיד admin@example.com - בסביבה אמיתית יבוא מהשרת
-        AppState.adminEmail = "admin@example.com";
-        
-        // מעקב אחר התחברות המשתמש
-        startAuthListener();
-        return true;
-      } catch (error) {
-        console.error('שגיאה באתחול Firebase:', error);
-        document.getElementById('auth-error').textContent = 'שגיאה באתחול המערכת: ' + error.message;
-        document.getElementById('auth-error').classList.remove('hidden');
-        return false;
-      }
-    }
-    
-    // מאזין מצב התחברות
-    function startAuthListener() {
-      // טיימר בטיחות
-      const safetyTimer = setTimeout(() => {
-        console.error('פסק זמן - מאזין האימות לא הגיב תוך 15 שניות');
-        document.getElementById('auth-error').textContent = 'האימות נתקע. נסה לרענן את הדף.';
-        document.getElementById('auth-error').classList.remove('hidden');
-        AppLoader.hide();
-        forceAppVisibility();
-      }, 15000);
-      
-      AppState.auth.onAuthStateChanged(user => {
-        clearTimeout(safetyTimer);
-        console.log('שינוי מצב אימות:', user ? 'משתמש מחובר' : 'אין משתמש');
-        
-        // העברה לטיפול הייעודי
-        AuthManager.handleUserStatus(user);
-      });
-    }
-    
-    // פונקציה ראשית לאתחול
-    function init() {
-      console.log('מתחיל אתחול אפליקציה...');
-      
-      // הוספת כל מאזיני האירועים
-      initEventListeners();
-      
-      // אתחול הניווט
-      AppNavigator.initNavigationEvents();
-      
-      // אתחול Firebase
-      if (initializeFirebase()) {
-        console.log('Firebase אותחל בהצלחה');
-      } else {
-        console.error('שגיאה באתחול Firebase');
-        AppLoader.hide();
-        forceAppVisibility();
+        AppState.auth.onAuthStateChanged(user => {
+          clearTimeout(safetyTimer);
+          console.log('שינוי מצב אימות:', user ? 'משתמש מחובר' : 'אין משתמש');
+          
+          // העברה לטיפול הייעודי
+          AuthManager.handleUserStatus(user);
+        });
       }
       
+      // פונקציה ראשית לאתחול
+      function init() {
+        console.log('מתחיל אתחול אפליקציה...');
+        
+        // הוספת כל מאזיני האירועים
+        initEventListeners();
+        
+        // אתחול הניווט
+        AppNavigator.initNavigationEvents();
+        
+        // אתחול Firebase
+        if (initializeFirebase()) {
+          console.log('Firebase אותחל בהצלחה');
+        } else {
+          console.error('שגיאה באתחול Firebase');
+          AppLoader.hide();
+          forceAppVisibility();
+        }
       // טיימר בטיחות לוודא אתחול תקין
       setTimeout(() => {
         if (document.getElementById('loader').style.display !== 'none') {
