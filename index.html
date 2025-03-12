@@ -5642,11 +5642,14 @@
       });
       
       // אירועי מודאל חבר צוות
-      document.getElementById('member-email').addEventListener('input', () => {
-        if (document.getElementById('member-email').value.trim().length >= 3) {
-          searchUserByEmailOrName();
-        }
-      });
+  const memberEmailInput = document.getElementById('member-email');
+  if (memberEmailInput) {
+    memberEmailInput.addEventListener('input', () => {
+      if (document.getElementById('member-email').value.trim().length >= 3) {
+        searchUserByEmailOrName();
+      }
+    });
+  }
       
       document.getElementById('add-member-confirm-btn').addEventListener('click', addMemberToProject);
       
