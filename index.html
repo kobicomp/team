@@ -5460,10 +5460,17 @@
       const helpNotifications = localStorage.getItem('helpNotifications') !== 'false';
       const reminderTime = localStorage.getItem('reminderTime') || '3';
       
-      document.getElementById('task-notifications-toggle').checked = taskNotifications;
-      document.getElementById('deadline-notifications-toggle').checked = deadlineNotifications;
-      document.getElementById('help-notifications-toggle').checked = helpNotifications;
-      document.getElementById('reminder-time-setting').value = reminderTime;
+      const taskToggle = document.getElementById('task-notifications-toggle');
+      if (taskToggle) taskToggle.checked = taskNotifications;
+      
+      const deadlineToggle = document.getElementById('deadline-notifications-toggle');
+      if (deadlineToggle) deadlineToggle.checked = deadlineNotifications;
+      
+      const helpToggle = document.getElementById('help-notifications-toggle');
+      if (helpToggle) helpToggle.checked = helpNotifications;
+      
+      const reminderTimeElement = document.getElementById('reminder-time-setting');
+      if (reminderTimeElement) reminderTimeElement.value = reminderTime;
       
       // הצגת/הסתרת אפשרויות מנהל
       document.querySelectorAll('.admin-only').forEach(el => {
@@ -5476,20 +5483,34 @@
       console.log('וידוא נראות האפליקציה');
       
       // הסתרת לוודר
-      document.getElementById('loader').classList.add('hidden');
-      document.getElementById('loader').style.display = 'none';
+      const loader = document.getElementById('loader');
+      if (loader) {
+        loader.classList.add('hidden');
+        loader.style.display = 'none';
+      }
       
       // טיפול בחלק האימות
+      const authSection = document.getElementById('auth-section');
+      const appSection = document.getElementById('app-section');
+      
       if (AppState.currentUser) {
-        document.getElementById('auth-section').classList.add('hidden');
-        document.getElementById('auth-section').style.display = 'none';
-        document.getElementById('app-section').classList.remove('hidden');
-        document.getElementById('app-section').style.display = 'block';
+        if (authSection) {
+          authSection.classList.add('hidden');
+          authSection.style.display = 'none';
+        }
+        if (appSection) {
+          appSection.classList.remove('hidden');
+          appSection.style.display = 'block';
+        }
       } else {
-        document.getElementById('auth-section').classList.remove('hidden');
-        document.getElementById('auth-section').style.display = 'flex';
-        document.getElementById('app-section').classList.add('hidden');
-        document.getElementById('app-section').style.display = 'none';
+        if (authSection) {
+          authSection.classList.remove('hidden');
+          authSection.style.display = 'flex';
+        }
+        if (appSection) {
+          appSection.classList.add('hidden');
+          appSection.style.display = 'none';
+        }
       }
       
       // וידוא שיש תצוגה אחת פעילה
@@ -5502,8 +5523,11 @@
       
       if (activeViewCount === 0 && AppState.currentUser) {
         // אם אין תצוגה פעילה, הצג תצוגת ברירת מחדל
-        document.getElementById('projects-view').classList.remove('hidden');
-        document.getElementById('projects-view').style.display = 'block';
+        const projectsView = document.getElementById('projects-view');
+        if (projectsView) {
+          projectsView.classList.remove('hidden');
+          projectsView.style.display = 'block';
+        }
       }
     }
     
@@ -5514,222 +5538,175 @@
       ensureAppVisibility();
     }
     
+    // פונקציית עזר להוספת מאזיני אירועים בצורה בטוחה
+    function safeAddEventListener(elementId, eventType, handler) {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.addEventListener(eventType, handler);
+        return true;
+      }
+      console.warn(`Element with ID '${elementId}' not found when adding ${eventType} listener`);
+      return false;
+    }
+    
     // === התחלת האפליקציה ===
     
     // מאזינים לאירועים
-    // מאזיני אירועים לכל האפליקציה
-  function initEventListeners() {
-    try {
-      // אירועי מודאל חבר צוות - כאן מתרחשת השגיאה
-      safeAddEventListener('member-email', 'input', () => {
-        const inputElement = document.getElementById('member-email');
-        if (inputElement && inputElement.value.trim().length >= 3) {
-          searchUserByEmailOrName();
-        }
-      });
-      
-      safeAddEventListener('add-member-confirm-btn', 'click', addMemberToProject);
-      
-      // אירועי הגדרות
-      const settingsMenuLinks = document.querySelectorAll('.settings-menu-link');
-      if (settingsMenuLinks && settingsMenuLinks.length > 0) {
-        settingsMenuLinks.forEach(link => {
-          link.addEventListener('click', e => {
-            e.preventDefault();
-            
-            // עדכון המצב הפעיל
-            document.querySelectorAll('.settings-menu-link').forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-            
-            // מעבר לפאנל המתאים
-            const settingsId = link.dataset.settings;
-            document.querySelectorAll('.settings-panel').forEach(panel => panel.classList.add('hidden'));
-            const settingsPanel = document.getElementById(`settings-${settingsId}`);
-            if (settingsPanel) {
-              settingsPanel.classList.remove('hidden');
-            }
-          });
+    function initEventListeners() {
+      try {
+        // אירועי התחברות/הרשמה
+        safeAddEventListener('login-btn', 'click', () => {
+          const email = document.getElementById('email').value;
+          const password = document.getElementById('password').value;
+          AuthManager.login(email, password);
         });
-      }
-      
-      // אירועי סינון פרויקטים
-      const filterTabs = document.querySelectorAll('.tabs .tab[data-filter]');
-      if (filterTabs && filterTabs.length > 0) {
-        filterTabs.forEach(tab => {
-          tab.addEventListener('click', () => {
-            document.querySelectorAll('.tabs .tab[data-filter]').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            
-            AppState.currentFilter = tab.dataset.filter;
-            ProjectManager.loadProjects();
-          });
-        });
-      }
-      
-      // אירוע מודל סגירה
-      const modalCloseButtons = document.querySelectorAll('.modal-close');
-      if (modalCloseButtons && modalCloseButtons.length > 0) {
-        modalCloseButtons.forEach(closeBtn => {
-          closeBtn.addEventListener('click', () => {
-            const modal = closeBtn.closest('.modal');
-            if (modal) {
-              AppModals.close(modal.id);
-            }
-          });
-        });
-      }
-      
-      // אירוע סגירת מודל בלחיצה מחוץ
-      const modals = document.querySelectorAll('.modal');
-      if (modals && modals.length > 0) {
-        modals.forEach(modal => {
-          modal.addEventListener('click', e => {
-            if (e.target === modal) {
-              AppModals.close(modal.id);
-            }
-          });
-        });
-      }
-    } catch (error) {
-      console.error('שגיאה באתחול מאזיני אירועים:', error);
-    }
-  }
-      // אירועי התחברות/הרשמה
-      document.getElementById('login-btn').addEventListener('click', () => {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        AuthManager.login(email, password);
-      });
-      
-      document.getElementById('switch-to-register').addEventListener('click', () => {
-        document.getElementById('display-name-container').style.display = 'block';
-        document.getElementById('login-actions').style.display = 'none';
-        document.getElementById('register-actions').style.display = 'block';
-      });
-      
-      document.getElementById('login-mode-btn').addEventListener('click', () => {
-        document.getElementById('display-name-container').style.display = 'none';
-        document.getElementById('login-actions').style.display = 'block';
-        document.getElementById('register-actions').style.display = 'none';
-      });
-      
-      document.getElementById('register-btn').addEventListener('click', () => {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const displayName = document.getElementById('display-name').value.trim();
-        AuthManager.register(email, password, displayName);
-      });
-      
-      document.getElementById('logout-btn').addEventListener('click', AuthManager.logout);
-      
-      // אירוע תפריט משתמש
-      document.querySelector('.user-menu-toggle').addEventListener('click', () => {
-        document.querySelector('.user-menu-dropdown').classList.toggle('show');
-      });
-      
-      // סגירת תפריט בלחיצה מחוץ
-      window.addEventListener('click', e => {
-        if (!e.target.closest('.user-menu')) {
-          const dropdown = document.querySelector('.user-menu-dropdown');
-          if (dropdown && dropdown.classList.contains('show')) {
-            dropdown.classList.remove('show');
-          }
-        }
-      });
-      
-      // אירועי חיפוש
-      document.getElementById('search-projects').addEventListener('input', () => {
-        filterProjects(document.getElementById('search-projects').value.trim().toLowerCase());
-      });
-      
-      document.getElementById('search-tasks').addEventListener('input', () => {
-        filterDashboardTasks(document.getElementById('search-tasks').value.trim().toLowerCase());
-      });
-      
-      // אירועי סינון דשבורד
-      document.getElementById('dashboard-filter-project').addEventListener('change', filterDashboardTasks);
-      document.getElementById('dashboard-sort-by').addEventListener('change', filterDashboardTasks);
-      document.getElementById('dashboard-filter-tag').addEventListener('change', filterDashboardTasks);
-      document.getElementById('dashboard-filter-status').addEventListener('change', filterDashboardTasks);
-      
-      // אירועי פרויקטים
-      document.getElementById('add-project-btn').addEventListener('click', ProjectManager.showAddProjectModal);
-      document.getElementById('save-project-btn').addEventListener('click', () => ProjectManager.saveProject());
-      document.getElementById('cancel-project-btn').addEventListener('click', () => AppModals.close('project-modal'));
-      
-      // אירועי משימות
-      document.getElementById('save-task-btn').addEventListener('click', () => TaskManager.saveTask());
-      document.getElementById('cancel-task-btn').addEventListener('click', () => AppModals.close('task-modal'));
-      
-      // אירוע תגיות
-      document.getElementById('task-tag-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter' && e.target.value.trim() !== '') {
-          e.preventDefault();
-          TaskManager.addTagToUI(e.target.value.trim());
-          e.target.value = '';
-        }
-      });
-      
-      // אירוע שינוי סטטוס משימה
-      document.getElementById('task-status').addEventListener('change', function() {
-        const status = this.value;
-        document.getElementById('task-blocked-reason-container').style.display = (status === 'blocked') ? 'block' : 'none';
-        document.getElementById('task-waiting-for-container').style.display = (status === 'waiting') ? 'block' : 'none';
-      });
-      
-      // אירועי העלאת קבצים
-      const fileUploadArea = document.getElementById('file-upload-area');
-      const fileInput = document.getElementById('task-files');
-      
-      fileUploadArea.addEventListener('click', () => {
-        fileInput.click();
-      });
-      
-      fileUploadArea.addEventListener('dragover', e => {
-        e.preventDefault();
-        fileUploadArea.style.borderColor = 'var(--primary)';
-      });
-      
-      fileUploadArea.addEventListener('dragleave', () => {
-        fileUploadArea.style.borderColor = '#ddd';
-      });
-      
-      fileUploadArea.addEventListener('drop', e => {
-        e.preventDefault();
-        fileUploadArea.style.borderColor = '#ddd';
         
-        if (e.dataTransfer.files.length > 0) {
-          handleFiles(e.dataTransfer.files);
+        safeAddEventListener('switch-to-register', 'click', () => {
+          const displayNameContainer = document.getElementById('display-name-container');
+          const loginActions = document.getElementById('login-actions');
+          const registerActions = document.getElementById('register-actions');
+          
+          if (displayNameContainer) displayNameContainer.style.display = 'block';
+          if (loginActions) loginActions.style.display = 'none';
+          if (registerActions) registerActions.style.display = 'block';
+        });
+        
+        safeAddEventListener('login-mode-btn', 'click', () => {
+          const displayNameContainer = document.getElementById('display-name-container');
+          const loginActions = document.getElementById('login-actions');
+          const registerActions = document.getElementById('register-actions');
+          
+          if (displayNameContainer) displayNameContainer.style.display = 'none';
+          if (loginActions) loginActions.style.display = 'block';
+          if (registerActions) registerActions.style.display = 'none';
+        });
+        
+        safeAddEventListener('register-btn', 'click', () => {
+          const email = document.getElementById('email').value;
+          const password = document.getElementById('password').value;
+          const displayName = document.getElementById('display-name') ? document.getElementById('display-name').value.trim() : '';
+          AuthManager.register(email, password, displayName);
+        });
+        
+        safeAddEventListener('logout-btn', 'click', AuthManager.logout);
+        
+        // אירוע תפריט משתמש
+        const userMenuToggle = document.querySelector('.user-menu-toggle');
+        if (userMenuToggle) {
+          userMenuToggle.addEventListener('click', () => {
+            const dropdown = document.querySelector('.user-menu-dropdown');
+            if (dropdown) dropdown.classList.toggle('show');
+          });
         }
-      });
-      
-      fileInput.addEventListener('change', () => {
-        if (fileInput.files.length > 0) {
-          handleFiles(fileInput.files);
+        
+        // סגירת תפריט בלחיצה מחוץ
+        window.addEventListener('click', e => {
+          if (!e.target.closest('.user-menu')) {
+            const dropdown = document.querySelector('.user-menu-dropdown');
+            if (dropdown && dropdown.classList.contains('show')) {
+              dropdown.classList.remove('show');
+            }
+          }
+        });
+        
+        // אירועי חיפוש
+        safeAddEventListener('search-projects', 'input', () => {
+          const searchInput = document.getElementById('search-projects');
+          filterProjects(searchInput ? searchInput.value.trim().toLowerCase() : '');
+        });
+        
+        safeAddEventListener('search-tasks', 'input', () => {
+          const searchInput = document.getElementById('search-tasks');
+          filterDashboardTasks(searchInput ? searchInput.value.trim().toLowerCase() : '');
+        });
+        
+        // אירועי סינון דשבורד
+        safeAddEventListener('dashboard-filter-project', 'change', filterDashboardTasks);
+        safeAddEventListener('dashboard-sort-by', 'change', filterDashboardTasks);
+        safeAddEventListener('dashboard-filter-tag', 'change', filterDashboardTasks);
+        safeAddEventListener('dashboard-filter-status', 'change', filterDashboardTasks);
+        
+        // אירועי פרויקטים
+        safeAddEventListener('add-project-btn', 'click', ProjectManager.showAddProjectModal);
+        safeAddEventListener('save-project-btn', 'click', () => ProjectManager.saveProject());
+        safeAddEventListener('cancel-project-btn', 'click', () => AppModals.close('project-modal'));
+        
+        // אירועי משימות
+        safeAddEventListener('save-task-btn', 'click', () => TaskManager.saveTask());
+        safeAddEventListener('cancel-task-btn', 'click', () => AppModals.close('task-modal'));
+        
+        // אירוע תגיות
+        safeAddEventListener('task-tag-input', 'keydown', e => {
+          if (e.key === 'Enter' && e.target.value.trim() !== '') {
+            e.preventDefault();
+            TaskManager.addTagToUI(e.target.value.trim());
+            e.target.value = '';
+          }
+        });
+        
+        // אירוע שינוי סטטוס משימה
+        safeAddEventListener('task-status', 'change', function() {
+          const status = this.value;
+          const blockedContainer = document.getElementById('task-blocked-reason-container');
+          const waitingContainer = document.getElementById('task-waiting-for-container');
+          
+          if (blockedContainer) blockedContainer.style.display = (status === 'blocked') ? 'block' : 'none';
+          if (waitingContainer) waitingContainer.style.display = (status === 'waiting') ? 'block' : 'none';
+        });
+        
+        // אירועי העלאת קבצים
+        const fileUploadArea = document.getElementById('file-upload-area');
+        const fileInput = document.getElementById('task-files');
+        
+        if (fileUploadArea && fileInput) {
+          fileUploadArea.addEventListener('click', () => {
+            fileInput.click();
+          });
+          
+          fileUploadArea.addEventListener('dragover', e => {
+            e.preventDefault();
+            fileUploadArea.style.borderColor = 'var(--primary)';
+          });
+          
+          fileUploadArea.addEventListener('dragleave', () => {
+            fileUploadArea.style.borderColor = '#ddd';
+          });
+          
+          fileUploadArea.addEventListener('drop', e => {
+            e.preventDefault();
+            fileUploadArea.style.borderColor = '#ddd';
+            
+            if (e.dataTransfer.files.length > 0) {
+              handleFiles(e.dataTransfer.files);
+            }
+          });
+          
+          fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+              handleFiles(fileInput.files);
+            }
+          });
         }
-      });
-      
-      // אירועי צ'אט משימה
-      document.getElementById('send-chat-message').addEventListener('click', TaskManager.sendChatMessage);
-      document.getElementById('chat-message').addEventListener('keypress', e => {
-        if (e.key === 'Enter') {
-          TaskManager.sendChatMessage();
-        }
-      });
-      
-      // אירועי מודאל חבר צוות
-  const memberEmailInput = document.getElementById('member-email');
-  if (memberEmailInput) {
-    memberEmailInput.addEventListener('input', () => {
-      if (document.getElementById('member-email').value.trim().length >= 3) {
-        searchUserByEmailOrName();
-      }
-    });
-  }
-      
-      document.getElementById('add-member-confirm-btn').addEventListener('click', addMemberToProject);
-      
-      // אירועי הגדרות
+        
+        // אירועי צ'אט משימה
+        safeAddEventListener('send-chat-message', 'click', TaskManager.sendChatMessage);
+        safeAddEventListener('chat-message', 'keypress', e => {
+          if (e.key === 'Enter') {
+            TaskManager.sendChatMessage();
+          }
+        });
+        
+        // אירועי מודאל חבר צוות
+        safeAddEventListener('member-email', 'input', () => {
+          const memberEmailInput = document.getElementById('member-email');
+          if (memberEmailInput && memberEmailInput.value.trim().length >= 3) {
+            searchUserByEmailOrName();
+          }
+        });
+        
+        safeAddEventListener('add-member-confirm-btn', 'click', addMemberToProject);
+        
+        // אירועי הגדרות
         const settingsMenuLinks = document.querySelectorAll('.settings-menu-link');
         if (settingsMenuLinks && settingsMenuLinks.length > 0) {
           settingsMenuLinks.forEach(link => {
@@ -5789,15 +5766,17 @@
             });
           });
         }
+      } catch (error) {
+        console.error('שגיאה באתחול מאזיני אירועים:', error);
       }
+    }
+    
+    // טיפול בקבצים שהועלו
+    function handleFiles(files) {
+      if (!files || files.length === 0) return;
       
-      // טיפול בקבצים שהועלו
-      function handleFiles(files) {
-        if (!files || files.length === 0) return;
-        
-        const filePreview = document.getElementById('file-preview');
-        if (!filePreview) return;
-        
+      const filePreview = document.getElementById('file-preview');
+      if (!filePreview) return;
         Array.from(files).forEach(file => {
           // בדיקת גודל הקובץ (מקסימום 10MB)
           if (file.size > 10 * 1024 * 1024) {
