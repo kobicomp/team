@@ -6488,7 +6488,170 @@ input:focus, textarea:focus, select:focus {
   
   return reminderItem;
   }
+  function showUserManagementModal(e) {
+  if (e) e.preventDefault();
   
+  // טעינת רשימת המשתמשים המורשים
+  const usersList = document.getElementById('authorized-users-list');
+  usersList.innerHTML = '<div>טוען משתמשים...</div>';
+  
+  db.collection('users')
+    .where('status', '==', 'approved')
+    .get()
+    .then(snapshot => {
+      if (snapshot.empty) {
+        usersList.innerHTML = '<div>אין משתמשים מורשים</div>';
+        return;
+      }
+      
+      usersList.innerHTML = '';
+      snapshot.forEach(doc => {
+        const userData = doc.data();
+        const userItem = document.createElement('div');
+        userItem.className = 'user-item';
+        userItem.innerHTML = `
+          <div>
+            <strong>${userData.displayName || userData.email}</strong>
+            <div>${userData.email}</div>
+            <div>סטטוס: ${userData.isAdmin ? 'מנהל' : 'משתמש רגיל'}</div>
+          </div>
+          ${currentUser.email !== userData.email ? `
+            <button class="btn btn-sm btn-danger remove-user" data-id="${doc.id}">
+              <i class="fas fa-user-minus"></i> הסר
+            </button>
+          ` : ''}
+        `;
+        
+        usersList.appendChild(userItem);
+      });
+      
+      // הוספת אירועי לחיצה למחיקת משתמשים
+      document.querySelectorAll('.remove-user').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const userId = this.getAttribute('data-id');
+          if (confirm('האם אתה בטוח שברצונך להסיר משתמש זה?')) {
+            removeUser(userId);
+          }
+        });
+      });
+    })
+    .catch(error => {
+      console.error("Error loading users:", error);
+      usersList.innerHTML = '<div>שגיאה בטעינת משתמשים</div>';
+    });
+  
+  document.getElementById('user-management-modal').style.display = 'block';
+}
+
+function showPendingRegistrationsModal(e) {
+  if (e) e.preventDefault();
+  
+  // טעינת רשימת הבקשות הממתינות
+  const pendingList = document.getElementById('pending-registrations-list');
+  pendingList.innerHTML = '<div>טוען בקשות הרשמה...</div>';
+  
+  db.collection('users')
+    .where('status', '==', 'pending')
+    .get()
+    .then(snapshot => {
+      if (snapshot.empty) {
+        pendingList.innerHTML = '<div>אין בקשות הרשמה ממתינות</div>';
+        return;
+      }
+      
+      pendingList.innerHTML = '';
+      snapshot.forEach(doc => {
+        const userData = doc.data();
+        const userItem = document.createElement('div');
+        userItem.className = 'pending-user-item';
+        userItem.innerHTML = `
+          <div>
+            <strong>${userData.displayName || userData.email}</strong>
+            <div>${userData.email}</div>
+            <div>נרשם: ${userData.createdAt ? new Date(userData.createdAt.toDate()).toLocaleString('he-IL') : 'לא ידוע'}</div>
+          </div>
+          <div class="pending-actions">
+            <button class="btn btn-sm btn-success approve-user" data-id="${doc.id}">
+              <i class="fas fa-check"></i> אשר
+            </button>
+            <button class="btn btn-sm btn-danger reject-user" data-id="${doc.id}">
+              <i class="fas fa-times"></i> דחה
+            </button>
+          </div>
+        `;
+        
+        pendingList.appendChild(userItem);
+      });
+      
+      // הוספת אירועי לחיצה לאישור/דחיית משתמשים
+      document.querySelectorAll('.approve-user').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const userId = this.getAttribute('data-id');
+          approveUser(userId);
+        });
+      });
+      
+      document.querySelectorAll('.reject-user').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const userId = this.getAttribute('data-id');
+          if (confirm('האם אתה בטוח שברצונך לדחות בקשה זו?')) {
+            rejectUser(userId);
+          }
+        });
+      });
+    })
+    .catch(error => {
+      console.error("Error loading pending registrations:", error);
+      pendingList.innerHTML = '<div>שגיאה בטעינת בקשות הרשמה</div>';
+    });
+  
+  document.getElementById('pending-registrations-modal').style.display = 'block';
+}
+
+// פונקציות עזר לניהול משתמשים
+function removeUser(userId) {
+  db.collection('users').doc(userId).delete()
+    .then(() => {
+      showNotification('משתמש הוסר', 'המשתמש הוסר בהצלחה', 'success');
+      showUserManagementModal(); // רענון הרשימה
+    })
+    .catch(error => {
+      console.error("Error removing user:", error);
+      showNotification('שגיאה', 'שגיאה בהסרת המשתמש', 'danger');
+    });
+}
+
+function approveUser(userId) {
+  db.collection('users').doc(userId).update({
+    status: 'approved',
+    approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    approvedBy: currentUser.uid
+  })
+    .then(() => {
+      showNotification('בקשה אושרה', 'בקשת ההרשמה אושרה בהצלחה', 'success');
+      showPendingRegistrationsModal(); // רענון הרשימה
+    })
+    .catch(error => {
+      console.error("Error approving user:", error);
+      showNotification('שגיאה', 'שגיאה באישור הבקשה', 'danger');
+    });
+}
+
+function rejectUser(userId) {
+  db.collection('users').doc(userId).update({
+    status: 'rejected',
+    rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    rejectedBy: currentUser.uid
+  })
+    .then(() => {
+      showNotification('בקשה נדחתה', 'בקשת ההרשמה נדחתה בהצלחה', 'success');
+      showPendingRegistrationsModal(); // רענון הרשימה
+    })
+    .catch(error => {
+      console.error("Error rejecting user:", error);
+      showNotification('שגיאה', 'שגיאה בדחיית הבקשה', 'danger');
+    });
+}
   function deleteReminder(id) {
   showLoader();
   
