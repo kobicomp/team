@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מערכת ניהול פרויקטים</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.2/main.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- לוודר לטעינה -->
+  <div id="loader" class="loader-container">
+    <div class="loader"></div>
+  </div>
+
+  <!-- מתג מצב חשיכה -->
+  <div class="dark-mode-toggle">
+    <input type="checkbox" id="dark-mode-switch" class="dark-mode-input">
+    <label for="dark-mode-switch" class="dark-mode-label">
+      <i class="fas fa-moon"></i>
+      <i class="fas fa-sun"></i>
+      <span class="dark-mode-ball"></span>
+    </label>
+  </div>
+
+  <!-- פאנל התראות -->
+  <div id="notifications-panel" class="notifications-panel"></div>
+
+  <!-- אזור התחברות -->
+  <div id="auth-section" class="auth-container hidden">
+    <div class="auth-card">
+      <h1 style="text-align: center; margin-bottom: 20px;">מערכת ניהול פרויקטים</h1>
+      <div id="auth-error" style="display: none;" class="error-message"></div>
+
+      <div class="form-group">
+        <label for="email">אימייל:</label>
+        <input type="email" id="email" placeholder="הכנס אימייל">
+      </div>
+
+      <div class="form-group" id="display-name-container" style="display: none;">
+        <label for="display-name">כינוי משתמש:</label>
+        <input type="text" id="display-name" placeholder="הכנס כינוי לתצוגה">
+      </div>
+
+      <div class="form-group">
+        <label for="password">סיסמה:</label>
+        <input type="password" id="password" placeholder="הכנס סיסמה">
+      </div>
+
+      <!-- כפתורי התחברות -->
+      <div id="login-actions" class="button-group">
+        <button id="login-btn" class="btn btn-lg">התחברות</button>
+        <button id="switch-to-register" class="btn btn-success btn-lg">הרשמה</button>
+      </div>
+
+      <!-- כפתורי הרשמה -->
+      <div id="register-actions" class="button-group" style="display: none;">
+        <button id="register-btn" class="btn btn-success btn-lg">הרשמה</button>
+        <button id="login-mode-btn" class="btn btn-outline btn-lg">חזרה להתחברות</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- אזור האפליקציה -->
+  <div id="app-section" class="hidden">
+    <!-- סרגל ניווט -->
+    <div class="navbar">
+      <div class="navbar-container">
+        <div class="navbar-brand-container">
+          <div class="hamburger-menu" id="hamburger-menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <a href="#" class="navbar-brand">ניהול פרויקטים</a>
+        </div>
+        <div class="navbar-nav" id="navbar-nav">
+          <div class="nav-item">
+            <a href="#" id="nav-projects" class="nav-link active">פרויקטים</a>
+          </div>
+          <div class="nav-item">
+            <a href="#" id="nav-dashboard" class="nav-link">המשימות שלי</a>
+          </div>
+          <div class="nav-item">
+            <a href="#" id="nav-calendar" class="nav-link">לוח שנה</a>
+          </div>
+          <div class="nav-item">
+            <a href="#" id="nav-stats" class="nav-link">סטטיסטיקות</a>
+          </div>
+          <div class="nav-item">
+            <a href="#" id="nav-activity" class="nav-link">היסטוריית פעילות</a>
+          </div>
+          <div class="user-menu">
+            <div class="user-menu-toggle">
+              <div class="user-avatar" id="user-avatar"></div>
+              <span id="user-email"></span>
+              <i class="fas fa-angle-down"></i>
+            </div>
+            <div class="user-menu-dropdown">
+              <a href="#" class="user-menu-item">הפרופיל שלי</a>
+              <a href="#" class="user-menu-item" id="nav-reminders">תזכורות</a>
+              <a href="#" class="user-menu-item">הגדרות</a>
+              <a href="#" id="logout-btn" class="user-menu-item logout">התנתק</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <!-- תצוגת רשימת פרויקטים -->
+      <div id="projects-view">
+        <div class="dashboard-header">
+          <h2>הפרויקטים שלי</h2>
+          <div class="header-actions">
+            <button id="add-project-btn" class="btn btn-success">
+              <i class="fas fa-plus"></i> פרויקט חדש
+            </button>
+            <button id="add-from-template-btn" class="btn btn-outline">
+              <i class="fas fa-copy"></i> צור מתבנית
+            </button>
+          </div>
+        </div>
+
+        <!-- אזור חיפוש -->
+        <div class="search-container">
+          <i class="fas fa-search search-icon"></i>
+          <input type="text" id="search-projects" placeholder="חיפוש פרויקטים לפי שם, תיאור או תגיות...">
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" data-filter="all">כל הפרויקטים</div>
+          <div class="tab" data-filter="personal">פרויקטים אישיים</div>
+          <div class="tab" data-filter="team">פרויקטים צוותיים</div>
+        </div>
+
+        <div id="projects-list" class="project-list">
+          <!-- פרויקטים יוצגו כאן -->
+          <div>טוען פרויקטים...</div>
+        </div>
+      </div>
+
+      <!-- תצוגת דשבורד המשימות -->
+      <div id="dashboard-view" class="hidden">
+        <div class="dashboard-header">
+          <h2>המשימות שלי</h2>
+          <div class="header-actions">
+            <button id="export-tasks-btn" class="btn btn-outline">
+              <i class="fas fa-file-export"></i> ייצוא משימות
+            </button>
+            <button id="import-tasks-btn" class="btn btn-outline">
+              <i class="fas fa-file-import"></i> ייבוא משימות
+            </button>
+            <button id="bulk-update-btn" class="btn btn-outline">
+              <i class="fas fa-edit"></i> עדכון מרוכז
+            </button>
+          </div>
+        </div>
+
+        <!-- אזור חיפוש -->
+        <div class="search-container">
+          <i class="fas fa-search search-icon"></i>
+          <input type="text" id="search-tasks" placeholder="חיפוש משימות לפי שם, תיאור או תגיות...">
+        </div>
+
+        <div class="dashboard-filter">
+          <select id="dashboard-filter-project" class="form-control">
+            <option value="all">כל הפרויקטים</option>
+            <!-- אפשרויות יתווספו דינמית -->
+          </select>
+          <select id="dashboard-sort-by" class="form-control">
+            <option value="deadline">מיון לפי תאריך</option>
+            <option value="name">מיון לפי שם</option>
+            <option value="project">מיון לפי פרויקט</option>
+            <option value="status">מיון לפי סטטוס</option>
+          </select>
+          <select id="dashboard-filter-tag" class="form-control">
+            <option value="all">כל התגיות</option>
+            <!-- תגיות יתווספו דינמית -->
+          </select>
+          <select id="dashboard-filter-status" class="form-control">
+            <option value="all">כל הסטטוסים</option>
+            <option value="not-started">טרם התחילה</option>
+            <option value="in-progress">בתהליך</option>
+            <option value="waiting">ממתינה</option>
+            <option value="blocked">תקועה</option>
+            <option value="completed">הושלמה</option>
+          </select>
+        </div>
+
+        <!-- כפתורי מעבר בין תצוגות -->
+        <div class="view-toggle-container">
+          <button class="view-toggle-btn active" data-view="list">
+            <i class="fas fa-list"></i> רשימה
+          </button>
+          <button class="view-toggle-btn" data-view="kanban">
+            <i class="fas fa-columns"></i> קנבן
+          </button>
+        </div>
+
+        <!-- תצוגת רשימה -->
+        <div id="dashboard-list-view">
+          <div class="dashboard-section">
+            <div class="section-header">
+              <h3 class="section-title">משימות לביצוע</h3>
+            </div>
+            <div id="dashboard-tasks" class="task-list">
+              <!-- המשימות יוצגו כאן -->
+            </div>
+          </div>
+
+          <div class="dashboard-section">
+            <div class="section-header">
+              <h3 class="section-title">משימות שהושלמו</h3>
+            </div>
+            <div id="dashboard-completed-tasks" class="task-list">
+              <!-- המשימות שהושלמו יוצגו כאן -->
+            </div>
+          </div>
+
+          <div class="dashboard-section">
+            <div class="section-header">
+              <h3 class="section-title">
+                בקשות עזרה צוותית
+                <span class="badge" style="background-color: var(--warning); color: white;"><i class="fas fa-hands-helping"></i></span>
+              </h3>
+            </div>
+            <div id="dashboard-help-tasks" class="task-list">
+              <!-- בקשות העזרה יוצגו כאן -->
+            </div>
+          </div>
+        </div>
+
+        <!-- תצוגת קנבן -->
+        <div id="dashboard-kanban-view" class="kanban-board hidden">
+          <div class="kanban-column" data-status="not-started">
+            <div class="kanban-column-header">
+              <h3>טרם התחילה</h3>
+              <span class="task-count"></span>
+            </div>
+            <div class="kanban-column-content" id="kanban-not-started"></div>
+          </div>
+          <div class="kanban-column" data-status="in-progress">
+            <div class="kanban-column-header">
+              <h3>בתהליך</h3>
+              <span class="task-count"></span>
+            </div>
+            <div class="kanban-column-content" id="kanban-in-progress"></div>
+          </div>
+          <div class="kanban-column" data-status="waiting">
+            <div class="kanban-column-header">
+              <h3>ממתינה</h3>
+              <span class="task-count"></span>
+            </div>
+            <div class="kanban-column-content" id="kanban-waiting"></div>
+          </div>
+          <div class="kanban-column" data-status="blocked">
+            <div class="kanban-column-header">
+              <h3>תקועה</h3>
+              <span class="task-count"></span>
+            </div>
+            <div class="kanban-column-content" id="kanban-blocked"></div>
+          </div>
+          <div class="kanban-column" data-status="completed">
+            <div class="kanban-column-header">
+              <h3>הושלמה</h3>
+              <span class="task-count"></span>
+            </div>
+            <div class="kanban-column-content" id="kanban-completed"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- תצוגת לוח שנה -->
+      <div id="calendar-view" class="hidden">
+        <div class="dashboard-header">
+          <h2>לוח שנה</h2>
+          <div class="header-actions">
+            <button id="today-calendar-btn" class="btn btn-outline">
+              <i class="fas fa-calendar-day"></i> היום
+            </button>
+            <div class="btn-group">
+              <button id="month-view-btn" class="btn btn-sm active">חודש</button>
+              <button id="week-view-btn" class="btn btn-sm">שבוע</button>
+              <button id="day-view-btn" class="btn btn-sm">יום</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="calendar-filter">
+          <select id="calendar-filter-project" class="form-control">
+            <option value="all">כל הפרויקטים</option>
+            <!-- אפשרויות יתווספו דינמית -->
+          </select>
+          <div class="calendar-legend">
+            <div class="legend-item">
+              <span class="legend-color" style="background-color: var(--primary);"></span>
+              <span>בתהליך</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-color" style="background-color: var(--success);"></span>
+              <span>הושלמה</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-color" style="background-color: var(--warning);"></span>
+              <span>ממתינה</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-color" style="background-color: var(--danger);"></span>
+              <span>תקועה/באיחור</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="calendar-container"></div>
+      </div>
+
+      <!-- תצוגת סטטיסטיקות -->
+      <div id="stats-view" class="hidden">
+        <div class="dashboard-header">
+          <h2>סטטיסטיקות</h2>
+        </div>
+
+        <div class="charts-container">
+          <div class="chart-card">
+            <div class="chart-title">התקדמות פרויקטים</div>
+            <canvas id="projects-progress-chart"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">משימות לפי סטטוס</div>
+            <canvas id="tasks-by-status-chart"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">עומס משימות שבועי</div>
+            <canvas id="weekly-tasks-chart"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">התפלגות לפי תגיות</div>
+            <canvas id="tasks-by-tag-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- תצוגת היסטוריית פעילות -->
+      <div id="activity-view" class="hidden">
+        <div class="dashboard-header">
+          <h2>היסטוריית פעילות</h2>
+        </div>
+
+        <div class="card">
+          <ul id="activity-log" class="activity-log">
+            <!-- היסטוריית פעילות תוצג כאן -->
+            <li class="activity-item">
+              <span class="activity-time">טוען היסטוריה...</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- תצוגת תזכורות -->
+      <div id="reminders-view" class="hidden">
+        <div class="dashboard-header">
+          <h2>תזכורות</h2>
+          <div class="header-actions">
+            <button id="add-reminder-btn" class="btn btn-success">
+              <i class="fas fa-plus"></i> תזכורת חדשה
+            </button>
+          </div>
+        </div>
+
+        <div class="reminders-container">
+          <div class="reminders-list" id="active-reminders">
+            <h3>תזכורות פעילות</h3>
+            <div class="reminders-inner" id="active-reminders-list">
+              <!-- תזכורות פעילות יוצגו כאן -->
+            </div>
+          </div>
+
+          <div class="reminders-list" id="past-reminders">
+            <h3>תזכורות שהושלמו</h3>
+            <div class="reminders-inner" id="past-reminders-list">
+              <!-- תזכורות שהושלמו יוצגו כאן -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- תצוגת פרויקט ספציפי -->
+      <div id="project-detail-view" class="hidden">
+        <div class="card">
+          <div class="project-header">
+            <button id="back-to-projects" class="btn">
+              <i class="fas fa-arrow-right"></i> חזרה לרשימת הפרויקטים
+            </button>
+            <div class="project-actions">
+              <button id="save-as-template-btn" class="btn btn-outline" title="שמור כתבנית">
+                <i class="fas fa-save"></i> שמור כתבנית
+              </button>
+            </div>
+          </div>
+
+          <div id="project-detail" style="margin-top: 20px;">
+            <!-- פרטי הפרויקט יוצגו כאן -->
+          </div>
+
+          <!-- גרף התקדמות הפרויקט -->
+          <div class="chart-card" style="margin-top: 20px; max-width: 600px; margin-left: auto; margin-right: auto;">
+            <div class="chart-title">התקדמות הפרויקט</div>
+            <canvas id="project-progress-chart"></canvas>
+          </div>
+
+          <!-- חברי צוות לפרויקט צוותי -->
+          <div id="team-members-section" class="hidden" style="margin-top: 20px;">
+            <div class="section-header">
+              <h3 class="section-title">חברי צוות</h3>
+              <button id="add-member-btn" class="btn btn-success">
+                <i class="fas fa-user-plus"></i> הוסף חבר צוות
+              </button>
+            </div>
+            <div id="team-members-list" class="member-list">
+              <!-- חברי צוות יוצגו כאן -->
+            </div>
+          </div>
+
+          <div style="margin-top: 20px;">
+            <div class="section-header">
+              <h3 class="section-title">משימות</h3>
+              <div>
+                <button id="add-task-btn" class="btn">
+                  <i class="fas fa-plus"></i> הוסף משימה
+                </button>
+                <button id="add-help-request-btn" class="btn btn-warning">
+                  <i class="fas fa-hands-helping"></i> בקשת עזרה
+                </button>
+              </div>
+            </div>
+
+            <div class="task-sort">
+              <select id="task-sort-by" class="form-control">
+                <option value="createdAt-desc">חדש לישן</option>
+                <option value="createdAt-asc">ישן לחדש</option>
+                <option value="deadline-asc">תאריך הקרוב ביותר</option>
+                <option value="name-asc">לפי שם (א-ת)</option>
+                <option value="status-asc">לפי סטטוס</option>
+              </select>
+              <select id="task-filter-tag" class="form-control">
+                <option value="all">כל התגיות</option>
+                <!-- תגיות יתווספו דינמית -->
+              </select>
+              <select id="task-filter-status" class="form-control">
+                <option value="all">כל הסטטוסים</option>
+                <option value="not-started">טרם התחילה</option>
+                <option value="in-progress">בתהליך</option>
+                <option value="waiting">ממתינה</option>
+                <option value="blocked">תקועה</option>
+                <option value="completed">הושלמה</option>
+              </select>
+              <!-- פילטר לפי אחראי - רק לפרויקטים צוותיים -->
+              <select id="task-filter-assignee" class="form-control hidden">
+                <option value="all">כל האחראים</option>
+                <option value="none">ללא אחראי</option>
+                <!-- אפשרויות יתווספו דינמית -->
+              </select>
+              <div class="bulk-select-checkbox-container">
+                <label class="bulk-select-label">
+                  <input type="checkbox" id="task-bulk-select" class="bulk-select-checkbox">
+                  בחירה מרובה
+                </label>
+              </div>
+            </div>
+
+            <!-- כפתורי מעבר בין תצוגות פרויקט -->
+            <div class="view-toggle-container">
+              <button class="view-toggle-btn active" data-view="list">
+                <i class="fas fa-list"></i> רשימה
+              </button>
+              <button class="view-toggle-btn" data-view="kanban">
+                <i class="fas fa-columns"></i> קנבן
+              </button>
+              <button class="view-toggle-btn" data-view="assignee">
+                <i class="fas fa-user-check"></i> לפי אחראי
+              </button>
+            </div>
+
+            <!-- תצוגת פעולות מרובות -->
+            <div id="bulk-actions" class="bulk-actions hidden">
+              <span id="selected-count">0 נבחרו</span>
+              <div class="bulk-actions-buttons">
+                <select id="bulk-status-change" class="form-control">
+                  <option value="">שנה סטטוס...</option>
+                  <option value="not-started">טרם התחילה</option>
+                  <option value="in-progress">בתהליך</option>
+                  <option value="waiting">ממתינה</option>
+                  <option value="blocked">תקועה</option>
+                  <option value="completed">הושלמה</option>
+                </select>
+                <select id="bulk-assignee-change" class="form-control">
+                  <option value="">שייך ל...</option>
+                  <option value="none">ללא אחראי</option>
+                  <!-- אפשרויות יתווספו דינמית -->
+                </select>
+                <button id="bulk-delete" class="btn btn-danger">
+                  <i class="fas fa-trash"></i> מחק
+                </button>
+              </div>
+            </div>
+
+            <!-- תצוגת רשימת משימות -->
+            <div id="tasks-list-view">
+              <div id="tasks-list" class="task-list">
+                <!-- משימות יוצגו כאן -->
+              </div>
+            </div>
+
+            <!-- תצוגת קנבן -->
+            <div id="tasks-kanban-view" class="kanban-board hidden">
+              <div class="kanban-column" data-status="not-started">
+                <div class="kanban-column-header">
+                  <h3>טרם התחילה</h3>
+                  <span class="task-count"></span>
+                </div>
+                <div class="kanban-column-content" id="project-kanban-not-started"></div>
+              </div>
+              <div class="kanban-column" data-status="in-progress">
+                <div class="kanban-column-header">
+                  <h3>בתהליך</h3>
+                  <span class="task-count"></span>
+                </div>
+                <div class="kanban-column-content" id="project-kanban-in-progress"></div>
+              </div>
+              <div class="kanban-column" data-status="waiting">
+                <div class="kanban-column-header">
+                  <h3>ממתינה</h3>
+                  <span class="task-count"></span>
+                </div>
+                <div class="kanban-column-content" id="project-kanban-waiting"></div>
+              </div>
+              <div class="kanban-column" data-status="blocked">
+                <div class="kanban-column-header">
+                  <h3>תקועה</h3>
+                  <span class="task-count"></span>
+                </div>
+                <div class="kanban-column-content" id="project-kanban-blocked"></div>
+              </div>
+              <div class="kanban-column" data-status="completed">
+                <div class="kanban-column-header">
+                  <h3>הושלמה</h3>
+                  <span class="task-count"></span>
+                </div>
+                <div class="kanban-column-content" id="project-kanban-completed"></div>
+              </div>
+            </div>
+
+            <!-- תצוגת משימות לפי אחראי -->
+            <div id="tasks-by-assignee-view" class="hidden">
+              <!-- משימות ללא אחראי - למעלה -->
+              <div class="unassigned-tasks-section">
+                <div class="section-header">
+                  <h3 class="section-title">משימות ללא אחראי</h3>
+                </div>
+                <div id="unassigned-tasks-list" class="task-list">
+                  <!-- משימות ללא אחראי יוצגו כאן -->
+                </div>
+              </div>
+
+              <!-- משימות לפי אחראי -->
+              <div id="tasks-by-assignee" class="tasks-by-assignee">
+                <!-- משימות לפי אחראי יוצגו כאן -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל פרויקט -->
+  <div id="project-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="project-modal-title" class="modal-title">פרויקט חדש</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div class="form-group">
+        <label for="project-name">שם הפרויקט:</label>
+        <input type="text" id="project-name" placeholder="הזן שם לפרויקט">
+      </div>
+
+      <div class="form-group">
+        <label for="project-description">תיאור הפרויקט:</label>
+        <textarea id="project-description" placeholder="הזן תיאור לפרויקט" rows="4"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="project-deadline">תאריך יעד:</label>
+        <input type="date" id="project-deadline">
+      </div>
+
+      <div class="form-group">
+        <label for="project-type">סוג פרויקט:</label>
+        <select id="project-type">
+          <option value="personal">פרויקט אישי</option>
+          <option value="team">פרויקט צוותי</option>
+        </select>
+      </div>
+
+      <input type="hidden" id="project-id">
+
+      <div class="modal-footer">
+        <button id="save-project-btn" class="btn btn-success">שמור</button>
+        <button id="cancel-project-btn" class="btn btn-outline">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל תבניות פרויקט -->
+  <div id="template-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">בחר תבנית</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div id="templates-list" class="templates-list">
+        <!-- תבניות יוצגו כאן -->
+        <div>טוען תבניות...</div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="create-from-template-btn" class="btn btn-success" disabled>צור פרויקט מתבנית</button>
+        <button id="cancel-template-btn" class="btn btn-outline">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל חבר צוות -->
+  <div id="team-member-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">הוספת חבר צוות לפרויקט</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div class="form-group">
+        <label id="member-email-label" for="member-email">חיפוש (אימייל או שם):</label>
+        <input type="text" id="member-email" placeholder="הזן אימייל או שם של חבר צוות">
+        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+          הזן לפחות 3 תווים כדי להתחיל בחיפוש
+        </div>
+      </div>
+
+      <div id="member-search-results"></div>
+
+      <div class="modal-footer">
+        <button id="add-member-confirm-btn" class="btn btn-success" disabled>הוסף לפרויקט</button>
+        <button id="cancel-member-btn" class="btn btn-outline">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל צ'אט משימה -->
+  <div id="task-chat-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="chat-task-name" class="modal-title">צ'אט משימה</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div class="task-chat" id="task-chat-messages">
+        <!-- הודעות צ'אט יוצגו כאן -->
+        <div class="chat-message">
+          <div class="chat-message-sender">מערכת</div>
+          <div class="chat-message-time">עכשיו</div>
+          <div class="chat-message-content">ברוכים הבאים לצ'אט המשימה!</div>
+        </div>
+      </div>
+
+      <div class="chat-input-container">
+        <input type="text" id="chat-message" class="chat-input" placeholder="הקלד הודעה...">
+        <button id="send-chat-message" class="btn">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+
+      <input type="hidden" id="chat-task-id">
+    </div>
+  </div>
+
+  <!-- מודל משימה -->
+  <div id="task-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="task-modal-title" class="modal-title">משימה חדשה</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div class="tabs task-modal-tabs">
+        <div class="tab active" data-tab="task-details">פרטי משימה</div>
+        <div class="tab" data-tab="task-dependencies">תלויות</div>
+        <div class="tab" data-tab="task-reminders">תזכורות</div>
+      </div>
+
+      <div class="task-tab-content" id="task-details" style="display: block;">
+        <div class="form-group">
+          <label for="task-name">שם המשימה:</label>
+          <input type="text" id="task-name" placeholder="הזן שם למשימה">
+        </div>
+
+        <div class="form-group">
+          <label for="task-description">תיאור המשימה:</label>
+          <textarea id="task-description" placeholder="הזן תיאור למשימה" rows="4"></textarea>
+        </div>
+
+        <!-- חדש: העלאת קבצים -->
+        <div class="form-group">
+          <label>קבצים מצורפים:</label>
+          <div class="file-upload-container" id="file-upload-area">
+            <i class="fas fa-cloud-upload-alt" style="font-size: 24px; color: var(--gray);"></i>
+            <p>גרור קבצים לכאן או לחץ לבחירת קבצים</p>
+            <input type="file" id="task-files" multiple style="display: none;">
+          </div>
+          <div class="file-preview" id="file-preview"></div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <div class="form-group">
+              <label for="task-deadline">תאריך יעד:</label>
+              <input type="date" id="task-deadline">
+            </div>
+          </div>
+          <div class="col">
+            <div class="form-group">
+              <label for="task-status">סטטוס:</label>
+              <select id="task-status">
+                <option value="not-started">טרם התחילה</option>
+                <option value="in-progress">בתהליך</option>
+                <option value="waiting">ממתינה לאירוע/תאריך</option>
+                <option value="blocked">תקועה</option>
+                <option value="completed">הושלמה</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" id="task-blocked-reason-container" style="display: none;">
+          <label for="task-blocked-reason">סיבת העיכוב:</label>
+          <input type="text" id="task-blocked-reason" placeholder="הסבר מדוע המשימה תקועה">
+        </div>
+
+        <div class="form-group" id="task-waiting-for-container" style="display: none;">
+          <label for="task-waiting-for">ממתינה ל:</label>
+          <input type="text" id="task-waiting-for" placeholder="תאריך או אירוע שאליו המשימה ממתינה">
+        </div>
+
+        <div class="form-group" id="task-tags-container">
+          <label for="task-tags">תגיות:</label>
+          <div class="tags-input">
+            <div id="task-tags-items"></div>
+            <input type="text" id="task-tag-input" class="tag-input" placeholder="הוסף תגית ולחץ Enter">
+          </div>
+        </div>
+
+        <div id="task-assignee-section" class="form-group hidden">
+          <label for="task-assignee">שייך ל:</label>
+          <select id="task-assignee">
+            <option value="">לא משויך</option>
+            <!-- אפשרויות חברי צוות יתווספו דינמית -->
+          </select>
+        </div>
+
+        <div id="task-help-section" class="form-group hidden">
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="task-help-request">
+              בקשת עזרה צוותית
+            </label>
+          </div>
+        </div>
+
+        <!-- תת-משימות -->
+        <div class="form-group">
+          <label>תת-משימות:</label>
+          <div class="subtasks-container">
+            <div id="subtasks-list">
+              <!-- תת-משימות יתווספו כאן -->
+            </div>
+            <div class="add-subtask-container">
+              <input type="text" id="new-subtask-input" placeholder="הזן תת-משימה חדשה...">
+              <button id="add-subtask-btn" class="btn btn-sm">הוסף</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="task-tab-content" id="task-dependencies" style="display: none;">
+        <div class="dependencies-section">
+          <h4>משימות קודמות</h4>
+          <p>המשימה הנוכחית תלויה בהשלמת המשימות הבאות:</p>
+          <div class="dependency-list" id="preceding-tasks">
+            <!-- משימות קודמות יוצגו כאן -->
+          </div>
+          <div class="form-group">
+            <label for="add-preceding-task">הוסף משימה קודמת:</label>
+            <select id="add-preceding-task">
+              <option value="">בחר משימה...</option>
+              <!-- רשימת משימות תתווסף דינמית -->
+            </select>
+            <button id="add-preceding-btn" class="btn btn-sm">הוסף</button>
+          </div>
+        </div>
+
+        <div class="dependencies-section">
+          <h4>משימות המשך</h4>
+          <p>המשימות הבאות תלויות בהשלמת המשימה הנוכחית:</p>
+          <div class="dependency-list" id="following-tasks">
+            <!-- משימות המשך יוצגו כאן -->
+          </div>
+          <div class="form-group">
+            <label for="add-following-task">הוסף משימת המשך:</label>
+            <select id="add-following-task">
+              <option value="">בחר משימה...</option>
+              <!-- רשימת משימות תתווסף דינמית -->
+            </select>
+            <button id="add-following-btn" class="btn btn-sm">הוסף</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="task-tab-content" id="task-reminders" style="display: none;">
+        <div class="form-group">
+          <label>תזכורות מוגדרות:</label>
+          <div id="task-reminders-list" class="task-reminders-list">
+            <!-- תזכורות יוצגו כאן -->
+            <div class="no-reminders">אין תזכורות מוגדרות</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>הוסף תזכורת:</label>
+          <div class="reminder-inputs">
+            <select id="reminder-type" class="form-control">
+              <option value="before-deadline">לפני תאריך היעד</option>
+              <option value="specific-date">בתאריך ספציפי</option>
+            </select>
+            <select id="reminder-time-before" class="form-control">
+              <option value="1-hour">שעה אחת</option>
+              <option value="1-day">יום אחד</option>
+              <option value="2-days">יומיים</option>
+              <option value="3-days">3 ימים</option>
+              <option value="1-week">שבוע</option>
+              <option value="2-weeks">שבועיים</option>
+            </select>
+            <input type="date" id="reminder-date" class="form-control" style="display: none;">
+            <input type="time" id="reminder-time" class="form-control">
+            <button id="add-reminder-to-task-btn" class="btn btn-sm">הוסף</button>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="task-id">
+      <input type="hidden" id="task-project-id">
+      <input type="hidden" id="task-tags-hidden">
+
+      <div class="modal-footer">
+        <button id="save-task-btn" class="btn btn-success">שמור</button>
+        <button id="cancel-task-btn" class="btn btn-outline">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל תזכורת חדשה -->
+  <div id="reminder-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">תזכורת חדשה</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div class="form-group">
+        <label for="reminder-title">כותרת:</label>
+        <input type="text" id="reminder-title" placeholder="הזן כותרת לתזכורת">
+      </div>
+
+      <div class="form-group">
+        <label for="reminder-description">תיאור:</label>
+        <textarea id="reminder-description" placeholder="הוסף פרטים לתזכורת" rows="3"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="reminder-task">משימה מקושרת (אופציונלי):</label>
+        <select id="reminder-task">
+          <option value="">ללא משימה מקושרת</option>
+          <!-- משימות יתווספו דינמית -->
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="reminder-modal-date">תאריך:</label>
+        <input type="date" id="reminder-modal-date">
+      </div>
+
+      <div class="form-group">
+        <label for="reminder-modal-time">שעה:</label>
+        <input type="time" id="reminder-modal-time">
+      </div>
+
+      <div class="form-group">
+        <label for="reminder-repeat">חזרה:</label>
+        <select id="reminder-repeat">
+          <option value="never">ללא חזרה</option>
+          <option value="daily">יומי</option>
+          <option value="weekly">שבועי</option>
+          <option value="monthly">חודשי</option>
+        </select>
+      </div>
+
+      <div class="modal-footer">
+        <button id="save-reminder-btn" class="btn btn-success">שמור</button>
+        <button id="cancel-reminder-btn" class="btn btn-outline">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל ייבוא משימות -->
+  <div id="import-tasks-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">ייבוא משימות</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div class="form-group">
+        <label for="import-project">פרויקט:</label>
+        <select id="import-project">
+          <!-- פרויקטים יתווספו דינמית -->
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>קובץ CSV:</label>
+        <div class="file-upload-container" id="csv-upload-area">
+          <i class="fas fa-file-csv" style="font-size: 24px; color: var(--gray);"></i>
+          <p>גרור קובץ CSV לכאן או לחץ לבחירת קובץ</p>
+          <input type="file" id="import-csv-file" accept=".csv" style="display: none;">
+        </div>
+        <div id="csv-file-name"></div>
+      </div>
+
+      <div class="form-group">
+        <label>תבנית קובץ CSV:</label>
+        <p class="csv-template-info">
+          הקובץ צריך להכיל את העמודות הבאות:
+          <code>name,description,deadline,status,tags</code>
+        </p>
+        <button id="download-csv-template" class="btn btn-sm btn-outline">
+          <i class="fas fa-download"></i> הורד תבנית
+        </button>
+      </div>
+
+      <div id="csv-preview" class="csv-preview"></div>
+
+      <div class="modal-footer">
+        <button id="import-tasks-btn" class="btn btn-success" disabled>ייבא משימות</button>
+        <button id="cancel-import-btn" class="btn btn-outline">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל ניהול משתמשים -->
+  <div id="user-management-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">ניהול משתמשים</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div class="form-group">
+        <h4>הוספת משתמש מורשה</h4>
+        <label for="authorized-email">אימייל:</label>
+        <input type="email" id="authorized-email" placeholder="הזן אימייל של משתמש">
+        <button id="add-authorized-btn" class="btn btn-success">הוסף משתמש מורשה</button>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <h4>רשימת משתמשים מורשים</h4>
+        <div id="authorized-users-list" class="user-management-list">
+          <div>טוען משתמשים...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- מודל בקשות הרשמה -->
+  <div id="pending-registrations-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">בקשות הרשמה ממתינות</h3>
+        <span class="modal-close">&times;</span>
+      </div>
+
+      <div id="pending-registrations-list" class="user-management-list">
+        <div>טוען בקשות הרשמה...</div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="close-registrations-btn" class="btn btn-outline">סגור</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ספריות חיצוניות -->
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-storage-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.2/main.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
