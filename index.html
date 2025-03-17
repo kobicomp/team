@@ -1,17 +1,6 @@
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
-<head
-<script>
-  // הגדרת הפונקציות החסרות באופן גלובלי
-  window.showUserManagementModal = function() {
-    console.log('ניהול משתמשים עדיין לא מומש');
-    alert('ניהול משתמשים אינו זמין כרגע');
-  };
-  
-  window.showPendingRegistrationsModal = function() {
-    console.log('תצוגת בקשות הרשמה עדיין לא מומשה');
-    alert('תצוגת בקשות הרשמה אינה זמינה כרגע');
-  };
+<head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>מערכת ניהול פרויקטים</title>
@@ -9185,9 +9174,7 @@ function changeBulkAssignee() {
       userMenuDropdown.insertBefore(pendingRegistrationsOption, logoutOption);
     }
   }
-  function showUserManagementModal() {
-    document.getElementById('user-management-modal').style.display = 'block';
-  }
+
   function logActivity(action, targetId, details = '') {
     if (!currentUser) return;
 
@@ -9287,19 +9274,6 @@ function changeBulkAssignee() {
     }
   });
 
-    // פונקציות חסרות שגורמות לשגיאות
-    function showUserManagementModal() {
-      console.log('ניהול משתמשים עדיין לא מומש');
-      // אופציונלי: הצג הודעה למשתמש
-      alert('ניהול משתמשים אינו זמין כרגע');
-    }
-    
-    function showPendingRegistrationsModal() {
-      console.log('תצוגת בקשות הרשמה עדיין לא מומשה');
-      // אופציונלי: הצג הודעה למשתמש 
-      alert('תצוגת בקשות הרשמה אינה זמינה כרגע');
-    }
-  
 </script>
 </body>
 </html>
