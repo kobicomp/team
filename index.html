@@ -9174,7 +9174,9 @@ function changeBulkAssignee() {
       userMenuDropdown.insertBefore(pendingRegistrationsOption, logoutOption);
     }
   }
-
+  function showUserManagementModal() {
+    document.getElementById('user-management-modal').style.display = 'block';
+  }
   function logActivity(action, targetId, details = '') {
     if (!currentUser) return;
 
