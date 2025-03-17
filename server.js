@@ -36,10 +36,7 @@ app.get('/api/firebase-config', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'השרת פועל כראוי!' });
 });
-// הוסף בסוף, לאחר הנתיבים הספציפיים
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+
 // הגדרת פורט לפי משתנה סביבה או 3000 כברירת מחדל
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
