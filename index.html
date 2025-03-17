@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
-<head>
+<head
+<script>
+  // הגדרת הפונקציות החסרות באופן גלובלי
+  window.showUserManagementModal = function() {
+    console.log('ניהול משתמשים עדיין לא מומש');
+    alert('ניהול משתמשים אינו זמין כרגע');
+  };
+  
+  window.showPendingRegistrationsModal = function() {
+    console.log('תצוגת בקשות הרשמה עדיין לא מומשה');
+    alert('תצוגת בקשות הרשמה אינה זמינה כרגע');
+  };
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>מערכת ניהול פרויקטים</title>
